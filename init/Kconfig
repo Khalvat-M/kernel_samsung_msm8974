@@ -907,7 +907,6 @@ config UIDGID_CONVERTED
 	depends on CGROUPS = n
 	depends on MIGRATION = n
 	depends on NUMA = n
-	depends on SYSVIPC = n
 	depends on IMA = n
 	depends on EVM = n
 	depends on KEYS = n
