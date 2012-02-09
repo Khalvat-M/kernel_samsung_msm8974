@@ -65,8 +65,8 @@ struct kstat {
 	dev_t		dev;
 	umode_t		mode;
 	unsigned int	nlink;
-	uid_t		uid;
-	gid_t		gid;
+	kuid_t		uid;
+	kgid_t		gid;
 	dev_t		rdev;
 	loff_t		size;
 	struct timespec  atime;
