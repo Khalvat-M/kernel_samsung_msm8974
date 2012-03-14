@@ -827,11 +827,11 @@ void cred_to_ucred(struct pid *pid, const struct cred *cred,
 		struct user_namespace *current_ns = current_user_ns();
 
 		if (use_effective) {
-			ucred->uid = user_ns_map_uid(current_ns, cred, cred->euid);
-			ucred->gid = user_ns_map_gid(current_ns, cred, cred->egid);
+			ucred->uid = from_kuid(current_ns, cred->euid);
+			ucred->gid = from_kuid(current_ns, cred->egid);
 		} else {
-			ucred->uid = user_ns_map_uid(current_ns, cred, cred->uid);
-			ucred->gid = user_ns_map_gid(current_ns, cred, cred->gid);
+			ucred->uid = from_kuid(current_ns, cred->uid);
+			ucred->gid = from_kuid(current_ns, cred->gid);
 		}
 	}
 }
