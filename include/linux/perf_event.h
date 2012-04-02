@@ -1291,7 +1291,8 @@ struct perf_sample_data {
 	struct perf_regs_user		regs_user;
 };
 
-static inline void perf_sample_data_init(struct perf_sample_data *data, u64 addr)
+static inline void perf_sample_data_init(struct perf_sample_data *data,
+					 u64 addr, u64 period)
 {
 	data->addr = addr;
 	data->raw  = NULL;
