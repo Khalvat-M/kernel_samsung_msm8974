@@ -249,6 +249,11 @@ static inline unsigned long kernel_stack_pointer(struct pt_regs *regs)
 	return regs->ARM_sp;
 }
 
+static inline unsigned long user_stack_pointer(struct pt_regs *regs)
+{
+	return regs->ARM_sp;
+}
+
 #define current_pt_regs(void) ({				\
 	register unsigned long sp asm ("sp");			\
 	(struct pt_regs *)((sp | (THREAD_SIZE - 1)) - 7) - 1;	\
