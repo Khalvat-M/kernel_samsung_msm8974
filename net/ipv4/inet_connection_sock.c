@@ -173,6 +173,9 @@ have_snum:
 	goto tb_not_found;
 tb_found:
 	if (!hlist_empty(&tb->owners)) {
+		if (sk->sk_reuse == SK_FORCE_REUSE)
+			goto success;
+
 		if (tb->fastreuse > 0 &&
 		    sk->sk_reuse && sk->sk_state != TCP_LISTEN &&
 		    smallest_size == -1) {
