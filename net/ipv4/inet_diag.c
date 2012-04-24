@@ -1143,13 +1143,13 @@ static int inet_diag_handler_cmd(struct sk_buff *skb, struct nlmsghdr *h)
 				   (struct inet_diag_req_v2 *)NLMSG_DATA(h));
 }
 
-static struct sock_diag_handler inet_diag_handler = {
+static const struct sock_diag_handler inet_diag_handler = {
 	.family = AF_INET,
 	.dump = inet_diag_handler_cmd,
 	.destroy = inet_diag_handler_cmd,
 };
 
-static struct sock_diag_handler inet6_diag_handler = {
+static const struct sock_diag_handler inet6_diag_handler = {
 	.family = AF_INET6,
 	.dump = inet_diag_handler_cmd,
 	.destroy = inet_diag_handler_cmd,
