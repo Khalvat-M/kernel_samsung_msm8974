@@ -398,8 +398,7 @@ nlmsg_failure:
 nla_put_failure:
 	if (skb)
 		kfree_skb(skb);
-	if (net_ratelimit())
-		printk(KERN_ERR "nf_queue: error creating packet message\n");
+	net_err_ratelimited("nf_queue: error creating packet message\n");
 	return NULL;
 }
 
@@ -440,11 +439,9 @@ nfqnl_enqueue_packet(struct nf_queue_entry *entry, unsigned int queuenum)
 			failopen = 1;
 			err = 0;
 		} else {
-			queue->queue_dropped++;
-			if (net_ratelimit())
-				  printk(KERN_WARNING "nf_queue: full at %d entries, "
-					 "dropping packets(s).\n",
-					 queue->queue_total);
+		queue->queue_dropped++;
+		net_warn_ratelimited("nf_queue: full at %d entries, dropping packets(s)\n",
+				     queue->queue_total);
 		}
 		goto err_out_free_nskb;
 	}
