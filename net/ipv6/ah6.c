@@ -24,6 +24,8 @@
  * 	This file is derived from net/ipv4/ah.c.
  */
 
+#define pr_fmt(fmt) "IPv6: " fmt
+
 #include <crypto/hash.h>
 #include <linux/module.h>
 #include <linux/slab.h>
@@ -660,9 +662,9 @@ static int ah6_init_state(struct xfrm_state *x)
 
 	if (aalg_desc->uinfo.auth.icv_fullbits/8 !=
 	    crypto_ahash_digestsize(ahash)) {
-		printk(KERN_INFO "AH: %s digestsize %u != %hu\n",
-		       x->aalg->alg_name, crypto_ahash_digestsize(ahash),
-		       aalg_desc->uinfo.auth.icv_fullbits/8);
+		pr_info("AH: %s digestsize %u != %hu\n",
+			x->aalg->alg_name, crypto_ahash_digestsize(ahash),
+			aalg_desc->uinfo.auth.icv_fullbits/8);
 		goto error;
 	}
 
@@ -728,12 +730,12 @@ static const struct inet6_protocol ah6_protocol = {
 static int __init ah6_init(void)
 {
 	if (xfrm_register_type(&ah6_type, AF_INET6) < 0) {
-		printk(KERN_INFO "ipv6 ah init: can't add xfrm type\n");
+		pr_info("%s: can't add xfrm type\n", __func__);
 		return -EAGAIN;
 	}
 
 	if (inet6_add_protocol(&ah6_protocol, IPPROTO_AH) < 0) {
-		printk(KERN_INFO "ipv6 ah init: can't add protocol\n");
+		pr_info("%s: can't add protocol\n", __func__);
 		xfrm_unregister_type(&ah6_type, AF_INET6);
 		return -EAGAIN;
 	}
@@ -744,10 +746,10 @@ static int __init ah6_init(void)
 static void __exit ah6_fini(void)
 {
 	if (inet6_del_protocol(&ah6_protocol, IPPROTO_AH) < 0)
-		printk(KERN_INFO "ipv6 ah close: can't remove protocol\n");
+		pr_info("%s: can't remove protocol\n", __func__);
 
 	if (xfrm_unregister_type(&ah6_type, AF_INET6) < 0)
-		printk(KERN_INFO "ipv6 ah close: can't remove xfrm type\n");
+		pr_info("%s: can't remove xfrm type\n", __func__);
 
 }
 
