@@ -40,6 +40,8 @@
  *						addition of prefix route
  */
 
+#define pr_fmt(fmt) "IPv6: " fmt
+
 #include <linux/errno.h>
 #include <linux/types.h>
 #include <linux/kernel.h>
@@ -375,11 +377,11 @@ void in6_dev_finish_destroy(struct inet6_dev *idev)
 	WARN_ON(idev->mc_list != NULL);
 
 #ifdef NET_REFCNT_DEBUG
-	printk(KERN_DEBUG "in6_dev_finish_destroy: %s\n", dev ? dev->name : "NIL");
+	printk(KERN_DEBUG "%s: %s\n", __func__, dev ? dev->name : "NIL");
 #endif
 	dev_put(dev);
 	if (!idev->dead) {
-		pr_warning("Freeing alive inet6 device %p\n", idev);
+		pr_warn("Freeing alive inet6 device %p\n", idev);
 		return;
 	}
 	snmp6_free_dev(idev);
@@ -421,7 +423,7 @@ static struct inet6_dev * ipv6_add_dev(struct net_device *dev)
 
 	if (snmp6_alloc_dev(ndev) < 0) {
 		ADBG((KERN_WARNING
-			"%s(): cannot allocate memory for statistics; dev=%s.\n",
+			"%s: cannot allocate memory for statistics; dev=%s.\n",
 			__func__, dev->name));
 		neigh_parms_release(&nd_tbl, ndev->nd_parms);
 		dev_put(dev);
@@ -431,7 +433,7 @@ static struct inet6_dev * ipv6_add_dev(struct net_device *dev)
 
 	if (snmp6_register_dev(ndev) < 0) {
 		ADBG((KERN_WARNING
-			"%s(): cannot create /proc/net/dev_snmp6/%s\n",
+			"%s: cannot create /proc/net/dev_snmp6/%s\n",
 			__func__, dev->name));
 		neigh_parms_release(&nd_tbl, ndev->nd_parms);
 		ndev->dead = 1;
@@ -449,9 +451,7 @@ static struct inet6_dev * ipv6_add_dev(struct net_device *dev)
 
 #if defined(CONFIG_IPV6_SIT) || defined(CONFIG_IPV6_SIT_MODULE)
 	if (dev->type == ARPHRD_SIT && (dev->priv_flags & IFF_ISATAP)) {
-		printk(KERN_INFO
-		       "%s: Disabled Multicast RS\n",
-		       dev->name);
+		pr_info("%s: Disabled Multicast RS\n", dev->name);
 		ndev->cnf.rtr_solicits = 0;
 	}
 #endif
@@ -598,7 +598,7 @@ void inet6_ifa_finish_destroy(struct inet6_ifaddr *ifp)
 		pr_notice("Timer is still running, when freeing ifa=%p\n", ifp);
 
 	if (ifp->state != INET6_IFADDR_STATE_DEAD) {
-		pr_warning("Freeing alive inet6 address %p\n", ifp);
+		pr_warn("Freeing alive inet6 address %p\n", ifp);
 		return;
 	}
 	dst_release(&ifp->rt->dst);
@@ -894,8 +894,7 @@ retry:
 	in6_dev_hold(idev);
 	if (idev->cnf.use_tempaddr <= 0) {
 		write_unlock(&idev->lock);
-		printk(KERN_INFO
-			"ipv6_create_tempaddr(): use_tempaddr is disabled.\n");
+		pr_info("%s: use_tempaddr is disabled\n", __func__);
 		in6_dev_put(idev);
 		ret = -1;
 		goto out;
@@ -905,8 +904,8 @@ retry:
 		idev->cnf.use_tempaddr = -1;	/*XXX*/
 		spin_unlock_bh(&ifp->lock);
 		write_unlock(&idev->lock);
-		printk(KERN_WARNING
-			"ipv6_create_tempaddr(): regeneration time exceeded. disabled temporary address support.\n");
+		pr_warn("%s: regeneration time exceeded - disabled temporary address support\n",
+			__func__);
 		in6_dev_put(idev);
 		ret = -1;
 		goto out;
@@ -916,8 +915,8 @@ retry:
 	if (__ipv6_try_regen_rndid(idev, tmpaddr) < 0) {
 		spin_unlock_bh(&ifp->lock);
 		write_unlock(&idev->lock);
-		printk(KERN_WARNING
-			"ipv6_create_tempaddr(): regeneration of randomized interface id failed.\n");
+		pr_warn("%s: regeneration of randomized interface id failed\n",
+			__func__);
 		in6_ifa_put(ifp);
 		in6_dev_put(idev);
 		ret = -1;
@@ -968,8 +967,7 @@ retry:
 	if (IS_ERR(ift)) {
 		in6_ifa_put(ifp);
 		in6_dev_put(idev);
-		printk(KERN_INFO
-			"ipv6_create_tempaddr(): retry temporary address regeneration.\n");
+		pr_info("%s: retry temporary address regeneration\n", __func__);
 		tmpaddr = &addr;
 		write_lock(&idev->lock);
 		goto retry;
@@ -1526,7 +1524,7 @@ void addrconf_dad_failure(struct inet6_ifaddr *ifp)
 			/* DAD failed for link-local based on MAC address */
 			idev->cnf.disable_ipv6 = 1;
 
-			printk(KERN_INFO "%s: IPv6 being disabled!\n",
+			pr_info("%s: IPv6 being disabled!\n",
 				ifp->idev->dev->name);
 		}
 	}
@@ -1756,9 +1754,8 @@ static void ipv6_regen_rndid(unsigned long data)
 		idev->cnf.regen_max_retry * idev->cnf.dad_transmits * idev->nd_parms->retrans_time -
 		idev->cnf.max_desync_factor * HZ;
 	if (time_before(expires, jiffies)) {
-		printk(KERN_WARNING
-			"ipv6_regen_rndid(): too short regeneration interval; timer disabled for %s.\n",
-			idev->dev->name);
+		pr_warn("%s: too short regeneration interval; timer disabled for %s\n",
+			__func__, idev->dev->name);
 		goto out;
 	}
 
@@ -2671,7 +2668,7 @@ static void addrconf_gre_config(struct net_device *dev)
 	struct inet6_dev *idev;
 	struct in6_addr addr;
 
-	pr_info("ipv6: addrconf_gre_config(%s)\n", dev->name);
+	pr_info("%s(%s)\n", __func__, dev->name);
 
 	ASSERT_RTNL();
 
@@ -2763,9 +2760,7 @@ static int addrconf_notify(struct notifier_block *this, unsigned long event,
 		if (event == NETDEV_UP) {
 			if (!addrconf_qdisc_ok(dev)) {
 				/* device is not ready yet. */
-				printk(KERN_INFO
-					"ADDRCONF(NETDEV_UP): %s: "
-					"link is not ready\n",
+				pr_info("ADDRCONF(NETDEV_UP): %s: link is not ready\n",
 					dev->name);
 				break;
 			}
@@ -2790,10 +2785,8 @@ static int addrconf_notify(struct notifier_block *this, unsigned long event,
 				idev->if_flags |= IF_READY;
 			}
 
-			printk(KERN_INFO
-					"ADDRCONF(NETDEV_CHANGE): %s: "
-					"link becomes ready\n",
-					dev->name);
+			pr_info("ADDRCONF(NETDEV_CHANGE): %s: link becomes ready\n",
+				dev->name);
 
 			run_pending = 1;
 		}
@@ -5044,8 +5037,8 @@ int __init addrconf_init(void)
 
 	err = ipv6_addr_label_init();
 	if (err < 0) {
-		printk(KERN_CRIT "IPv6 Addrconf:"
-		       " cannot initialize default policy table: %d.\n", err);
+		pr_crit("%s: cannot initialize default policy table: %d\n",
+			__func__, err);
 		goto out;
 	}
 
