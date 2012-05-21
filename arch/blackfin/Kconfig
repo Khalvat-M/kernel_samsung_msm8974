@@ -633,8 +633,6 @@ config ARCH_USES_GETTIMEOFFSET
 	depends on !GENERIC_CLOCKEVENTS
 	def_bool y
 
-source kernel/time/Kconfig
-
 comment "Misc"
 
 choice
