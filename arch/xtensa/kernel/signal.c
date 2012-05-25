@@ -19,7 +19,6 @@
 #include <linux/errno.h>
 #include <linux/ptrace.h>
 #include <linux/personality.h>
-#include <linux/freezer.h>
 
 #include <asm/ucontext.h>
 #include <asm/uaccess.h>
