@@ -201,6 +201,7 @@ void zap_pid_ns_processes(struct pid_namespace *pid_ns)
 	return;
 }
 
+#ifdef CONFIG_CHECKPOINT_RESTORE
 static int pid_ns_ctl_handler(struct ctl_table *table, int write,
 		void __user *buffer, size_t *lenp, loff_t *ppos)
 {
@@ -228,8 +229,8 @@ static struct ctl_table pid_ns_ctl_table[] = {
 	},
 	{ }
 };
-
 static struct ctl_path kern_path[] = { { .procname = "kernel", }, { } };
+#endif	/* CONFIG_CHECKPOINT_RESTORE */
 
 int reboot_pid_ns(struct pid_namespace *pid_ns, int cmd)
 {
@@ -263,7 +264,10 @@ int reboot_pid_ns(struct pid_namespace *pid_ns, int cmd)
 static __init int pid_namespaces_init(void)
 {
 	pid_ns_cachep = KMEM_CACHE(pid_namespace, SLAB_PANIC);
+
+#ifdef CONFIG_CHECKPOINT_RESTORE
 	register_sysctl_paths(kern_path, pid_ns_ctl_table);
+#endif
 	return 0;
 }
 
