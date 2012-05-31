@@ -456,6 +456,7 @@ struct mem_size_stats {
 	unsigned long anonymous;
 	unsigned long anonymous_thp;
 	unsigned long swap;
+	unsigned long nonlinear;
 	u64 pss;
 	u64 swap_pss;
 };
@@ -466,6 +467,7 @@ static void smaps_pte_entry(pte_t ptent, unsigned long addr,
 {
 	struct mem_size_stats *mss = walk->private;
 	struct vm_area_struct *vma = mss->vma;
+	pgoff_t pgoff = linear_page_index(vma, addr);
 	struct page *page = NULL;
 	int mapcount;
 
@@ -489,6 +491,9 @@ static void smaps_pte_entry(pte_t ptent, unsigned long addr,
 			}
 		} else if (is_migration_entry(swpent))
 			page = migration_entry_to_page(swpent);
+	} else if (pte_file(ptent)) {
+		if (pte_to_pgoff(ptent) != pgoff)
+			mss->nonlinear += ptent_size;
 	}
 
 	if (!page)
@@ -496,6 +501,9 @@ static void smaps_pte_entry(pte_t ptent, unsigned long addr,
 
 	if (PageAnon(page))
 		mss->anonymous += ptent_size;
+
+	if (page->index != pgoff)
+		mss->nonlinear += ptent_size;
 
 	mss->resident += ptent_size;
 	/* Accumulate the size in pages that have been accessed. */
@@ -605,6 +613,10 @@ static int show_smap(struct seq_file *m, void *v, int is_pid)
 		seq_print_vma_name(m, vma);
 		seq_putc(m, '\n');
 	}
+
+	if (vma->vm_flags & VM_NONLINEAR)
+		seq_printf(m, "Nonlinear:      %8lu kB\n",
+				mss.nonlinear >> 10);
 
 	if (m->count < m->size)  /* vma is copied successfully */
 		m->version = (vma != get_gate_vma(task->mm))
