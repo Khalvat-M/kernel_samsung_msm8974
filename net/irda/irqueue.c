@@ -521,7 +521,7 @@ void *hashbin_remove_first( hashbin_t *hashbin)
 		 * Dequeue the entry...
 		 */
 		dequeue_general( (irda_queue_t**) &hashbin->hb_queue[ bin ],
-				 (irda_queue_t*) entry );
+				 entry);
 		hashbin->hb_size--;
 		entry->q_next = NULL;
 		entry->q_prev = NULL;
@@ -613,7 +613,7 @@ void* hashbin_remove( hashbin_t* hashbin, long hashv, const char* name)
 	 */
 	if ( found ) {
 		dequeue_general( (irda_queue_t**) &hashbin->hb_queue[ bin ],
-				 (irda_queue_t*) entry );
+				 entry);
 		hashbin->hb_size--;
 
 		/*
@@ -683,7 +683,7 @@ void* hashbin_remove_this( hashbin_t* hashbin, irda_queue_t* entry)
 	 * Dequeue the entry...
 	 */
 	dequeue_general( (irda_queue_t**) &hashbin->hb_queue[ bin ],
-			 (irda_queue_t*) entry );
+			 entry);
 	hashbin->hb_size--;
 	entry->q_next = NULL;
 	entry->q_prev = NULL;
