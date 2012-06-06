@@ -78,9 +78,10 @@ static void do_gpio_reset(void)
 static void do_hw_reset(void)
 {
 	/* Initialize the watchdog and let it fire */
-	OWER = OWER_WME;
-	OSSR = OSSR_M3;
-	OSMR3 = OSCR + 368640;	/* ... in 100 ms */
+	writel_relaxed(OWER_WME, OWER);
+	writel_relaxed(OSSR_M3, OSSR);
+	/* ... in 100 ms */
+	writel_relaxed(readl_relaxed(OSCR) + 368640, OSMR3);
 	/*
 	 * SDRAM hangs on watchdog reset on Marvell PXA270 (erratum 71)
 	 * we put SDRAM into self-refresh to prevent that
