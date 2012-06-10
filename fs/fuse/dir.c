@@ -177,7 +177,7 @@ u64 fuse_get_attr_version(struct fuse_conn *fc)
  * the lookup once more.  If the lookup results in the same inode,
  * then refresh the attributes, timeouts and mark the dentry valid.
  */
-static int fuse_dentry_revalidate(struct dentry *entry, struct nameidata *nd)
+static int fuse_dentry_revalidate(struct dentry *entry, unsigned int flags)
 {
 	struct inode *inode;
 	struct dentry *parent;
@@ -197,7 +197,7 @@ static int fuse_dentry_revalidate(struct dentry *entry, struct nameidata *nd)
 		if (!inode)
 			return 0;
 
-		if (nd && (nd->flags & LOOKUP_RCU))
+		if (flags & LOOKUP_RCU)
 			return -ECHILD;
 
 		fc = get_fuse_conn(inode);
