@@ -2017,7 +2017,7 @@ out_no_task:
 }
 
 static struct dentry *proc_lookupfd(struct inode *dir, struct dentry *dentry,
-				    struct nameidata *nd)
+				    unsigned int flags)
 {
 	return proc_lookupfd_common(dir, dentry, proc_fd_instantiate);
 }
@@ -2248,7 +2248,7 @@ proc_map_files_instantiate(struct inode *dir, struct dentry *dentry,
 }
 
 static struct dentry *proc_map_files_lookup(struct inode *dir,
-		struct dentry *dentry, struct nameidata *nd)
+		struct dentry *dentry, unsigned int flags)
 {
 	unsigned long vm_start, vm_end;
 	struct vm_area_struct *vma;
@@ -2566,7 +2566,7 @@ static struct dentry *proc_fdinfo_instantiate(struct inode *dir,
 
 static struct dentry *proc_lookupfdinfo(struct inode *dir,
 					struct dentry *dentry,
-					struct nameidata *nd)
+					unsigned int flags)
 {
 	return proc_lookupfd_common(dir, dentry, proc_fdinfo_instantiate);
 }
@@ -2816,7 +2816,7 @@ static const struct file_operations proc_attr_dir_operations = {
 };
 
 static struct dentry *proc_attr_dir_lookup(struct inode *dir,
-				struct dentry *dentry, struct nameidata *nd)
+				struct dentry *dentry, unsigned int flags)
 {
 	return proc_pident_lookup(dir, dentry,
 				  attr_dir_stuff, ARRAY_SIZE(attr_dir_stuff));
@@ -3164,7 +3164,8 @@ static const struct file_operations proc_tgid_base_operations = {
 	.llseek		= default_llseek,
 };
 
-static struct dentry *proc_tgid_base_lookup(struct inode *dir, struct dentry *dentry, struct nameidata *nd){
+static struct dentry *proc_tgid_base_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags)
+{
 	return proc_pident_lookup(dir, dentry,
 				  tgid_base_stuff, ARRAY_SIZE(tgid_base_stuff));
 }
@@ -3293,7 +3294,7 @@ out:
 	return error;
 }
 
-struct dentry *proc_pid_lookup(struct inode *dir, struct dentry * dentry, struct nameidata *nd)
+struct dentry *proc_pid_lookup(struct inode *dir, struct dentry * dentry, unsigned int flags)
 {
 	struct dentry *result = NULL;
 	struct task_struct *task;
@@ -3541,7 +3542,8 @@ static int proc_tid_base_readdir(struct file * filp,
 				   tid_base_stuff,ARRAY_SIZE(tid_base_stuff));
 }
 
-static struct dentry *proc_tid_base_lookup(struct inode *dir, struct dentry *dentry, struct nameidata *nd){
+static struct dentry *proc_tid_base_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags)
+{
 	return proc_pident_lookup(dir, dentry,
 				  tid_base_stuff, ARRAY_SIZE(tid_base_stuff));
 }
@@ -3585,7 +3587,7 @@ out:
 	return error;
 }
 
-static struct dentry *proc_task_lookup(struct inode *dir, struct dentry * dentry, struct nameidata *nd)
+static struct dentry *proc_task_lookup(struct inode *dir, struct dentry * dentry, unsigned int flags)
 {
 	struct dentry *result = ERR_PTR(-ENOENT);
 	struct task_struct *task;
