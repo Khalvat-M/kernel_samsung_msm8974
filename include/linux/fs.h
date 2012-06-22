@@ -1800,9 +1800,9 @@ struct inode_operations {
 		      u64 len);
 	int (*update_time)(struct inode *, struct timespec *, int);
 	int (*set_acl)(struct inode *, struct posix_acl *, int);
-	struct file * (*atomic_open)(struct inode *, struct dentry *,
-				     struct opendata *, unsigned open_flag,
-				     umode_t create_mode, int *opened);
+	int (*atomic_open)(struct inode *, struct dentry *,
+			   struct opendata *, unsigned open_flag,
+			   umode_t create_mode, int *opened);
 } ____cacheline_aligned;
 
 struct seq_file;
