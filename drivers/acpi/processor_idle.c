@@ -221,9 +221,6 @@ static void lapic_timer_state_broadcast(struct acpi_processor *pr,
 
 #endif
 
-/*
- * Suspend / resume control
- */
 static u32 saved_bm_rld;
 
 static void acpi_idle_bm_rld_save(void)
