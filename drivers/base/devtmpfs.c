@@ -160,9 +160,7 @@ static int dev_mkdir(const char *name, umode_t mode)
 	if (!err)
 		/* mark as kernel-created inode */
 		dentry->d_inode->i_private = &thread;
-	dput(dentry);
-	mutex_unlock(&path.dentry->d_inode->i_mutex);
-	path_put(&path);
+	done_path_create(&path, dentry);
 	return err;
 }
 
@@ -223,10 +221,7 @@ static int handle_create(const char *nodename, umode_t mode, kuid_t uid,
 		/* mark as kernel-created inode */
 		dentry->d_inode->i_private = &thread;
 	}
-	dput(dentry);
-
-	mutex_unlock(&path.dentry->d_inode->i_mutex);
-	path_put(&path);
+	done_path_create(&path, dentry);
 	return err;
 }
 
