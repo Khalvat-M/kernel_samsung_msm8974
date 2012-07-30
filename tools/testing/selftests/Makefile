@@ -1,4 +1,4 @@
-TARGETS = breakpoints mqueue vm
+TARGETS = breakpoints mqueue vm cpu-hotplug memory-hotplug
 
 all:
 	for TARGET in $(TARGETS); do \
