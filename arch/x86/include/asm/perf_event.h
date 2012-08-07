@@ -249,4 +249,6 @@ static inline void perf_events_lapic_init(void)	{ }
  static inline void amd_pmu_disable_virt(void) { }
 #endif
 
+#define arch_perf_out_copy_user copy_from_user_nmi
+
 #endif /* _ASM_X86_PERF_EVENT_H */
