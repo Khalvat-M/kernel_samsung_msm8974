@@ -236,16 +236,19 @@ search_help[] = N_(
 	"Result:\n"
 	"-----------------------------------------------------------------\n"
 	"Symbol: FOO [=m]\n"
+	"Type  : tristate\n"
 	"Prompt: Foo bus is used to drive the bar HW\n"
-	"Defined at drivers/pci/Kconfig:47\n"
-	"Depends on: X86_LOCAL_APIC && X86_IO_APIC || IA64\n"
-	"Location:\n"
-	"  -> Bus options (PCI, PCMCIA, EISA, ISA)\n"
-	"    -> PCI support (PCI [=y])\n"
-	"      -> PCI access mode (<choice> [=y])\n"
-	"Selects: LIBCRC32\n"
-	"Selected by: BAR\n"
+	"  Defined at drivers/pci/Kconfig:47\n"
+	"  Depends on: X86_LOCAL_APIC && X86_IO_APIC || IA64\n"
+	"  Location:\n"
+	"    -> Bus options (PCI, PCMCIA, EISA, ISA)\n"
+	"      -> PCI support (PCI [=y])\n"
+	"(1)     -> PCI access mode (<choice> [=y])\n"
+	"  Selects: LIBCRC32\n"
+	"  Selected by: BAR\n"
 	"-----------------------------------------------------------------\n"
+	"o The line 'Type:' shows the type of the configuration option for\n"
+	"  this symbol (boolean, tristate, string, ...)\n"
 	"o The line 'Prompt:' shows the text used in the menu structure for\n"
 	"  this symbol\n"
 	"o The 'Defined at' line tell at what file / line number the symbol\n"
@@ -254,8 +257,12 @@ search_help[] = N_(
 	"  this symbol to be visible in the menu (selectable)\n"
 	"o The 'Location:' lines tell where in the menu structure this symbol\n"
 	"  is located\n"
-	"    A location followed by a [=y] indicate that this is a selectable\n"
-	"    menu item - and current value is displayed inside brackets.\n"
+	"    A location followed by a [=y] indicates that this is a\n"
+	"    selectable menu item - and the current value is displayed inside\n"
+	"    brackets.\n"
+	"    Press the key in the (#) prefix to jump directly to that\n"
+	"    location. You will be returned to the current search results\n"
+	"    after exiting this new menu.\n"
 	"o The 'Selects:' line tell what symbol will be automatically\n"
 	"  selected if this symbol is selected (y or m)\n"
 	"o The 'Selected by' line tell what symbol has selected this symbol\n"
@@ -276,7 +283,7 @@ static int show_all_options;
 static int save_and_exit;
 static int silent;
 
-static void conf(struct menu *menu);
+static void conf(struct menu *menu, struct menu *active_menu);
 static void conf_choice(struct menu *menu);
 static void conf_string(struct menu *menu);
 static void conf_load(void);
@@ -310,7 +317,9 @@ static void search_conf(void)
 	struct symbol **sym_arr;
 	struct gstr res;
 	char *dialog_input;
-	int dres;
+	int dres, vscroll = 0, hscroll = 0;
+	bool again;
+
 again:
 	dialog_clear();
 	dres = dialog_inputbox(_("Search Configuration Parameter"),
@@ -333,10 +342,24 @@ again:
 		dialog_input += strlen(CONFIG_);
 
 	sym_arr = sym_re_search(dialog_input);
-	res = get_relations_str(sym_arr);
+	do {
+		struct menu *jumps[JUMP_NB] = {0};
+		int keys[JUMP_NB + 1] = {0}, i;
+
+		res = get_relations_str(sym_arr, jumps);
+		for (i = 0; i < JUMP_NB && jumps[i]; i++)
+			keys[i] = '1' + i;
+		dres = show_textbox_ext(_("Search Results"), str_get(&res), 0,
+					0, keys, &vscroll, &hscroll);
+		again = false;
+		for (i = 0; i < JUMP_NB && jumps[i]; i++)
+			if (dres == keys[i]) {
+				conf(jumps[i]->parent, jumps[i]);
+				again = true;
+			}
+		str_free(&res);
+	} while (again);
 	free(sym_arr);
-	show_textbox(_("Search Results"), str_get(&res), 0, 0);
-	str_free(&res);
 }
 
 static void build_conf(struct menu *menu)
@@ -517,12 +540,11 @@ conf_childs:
 	indent -= doint;
 }
 
-static void conf(struct menu *menu)
+static void conf(struct menu *menu, struct menu *active_menu)
 {
 	struct menu *submenu;
 	const char *prompt = menu_get_prompt(menu);
 	struct symbol *sym;
-	struct menu *active_menu = NULL;
 	int res;
 	int s_scroll = 0;
 
@@ -565,13 +587,13 @@ static void conf(struct menu *menu)
 				if (single_menu_mode)
 					submenu->data = (void *) (long) !submenu->data;
 				else
-					conf(submenu);
+					conf(submenu, NULL);
 				break;
 			case 't':
 				if (sym_is_choice(sym) && sym_get_tristate_value(sym) == yes)
 					conf_choice(submenu);
 				else if (submenu->prompt->type == P_MENU)
-					conf(submenu);
+					conf(submenu, NULL);
 				break;
 			case 's':
 				conf_string(submenu);
@@ -616,7 +638,7 @@ static void conf(struct menu *menu)
 			if (item_is_tag('t'))
 				sym_toggle_tristate_value(sym);
 			else if (item_is_tag('m'))
-				conf(submenu);
+				conf(submenu, NULL);
 			break;
 		case 9:
 			search_conf();
@@ -910,7 +932,7 @@ int main(int ac, char **av)
 	set_config_filename(conf_get_configname());
 	conf_set_message_callback(conf_message_callback);
 	do {
-		conf(&rootmenu);
+		conf(&rootmenu, NULL);
 		res = handle_exit();
 	} while (res == KEY_ESC);
 
