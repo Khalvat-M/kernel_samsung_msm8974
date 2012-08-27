@@ -982,7 +982,7 @@ SYSCALL_DEFINE5(mq_timedsend, mqd_t, mqdes, const char __user *, u_msg_ptr,
 	ktime_t expires, *timeout = NULL;
 	struct timespec ts;
 	struct posix_msg_tree_node *new_leaf = NULL;
-	int ret = 0;
+	int ret = 0, fput_needed;
 
 	if (u_abs_timeout) {
 		int res = prepare_timeout(u_abs_timeout, &expires, &ts);
@@ -996,7 +996,7 @@ SYSCALL_DEFINE5(mq_timedsend, mqd_t, mqdes, const char __user *, u_msg_ptr,
 
 	audit_mq_sendrecv(mqdes, msg_len, msg_prio, timeout ? &ts : NULL);
 
-	filp = fget(mqdes);
+	filp = fget_light(mqdes, &fput_needed);
 	if (unlikely(!filp)) {
 		ret = -EBADF;
 		goto out;
@@ -1085,7 +1085,7 @@ out_free:
 	if (ret)
 		free_msg(msg_ptr);
 out_fput:
-	fput(filp);
+	fput_light(filp, fput_needed);
 out:
 	return ret;
 }
@@ -1103,6 +1103,7 @@ SYSCALL_DEFINE5(mq_timedreceive, mqd_t, mqdes, char __user *, u_msg_ptr,
 	ktime_t expires, *timeout = NULL;
 	struct timespec ts;
 	struct posix_msg_tree_node *new_leaf = NULL;
+	int fput_needed;
 
 	if (u_abs_timeout) {
 		int res = prepare_timeout(u_abs_timeout, &expires, &ts);
@@ -1113,7 +1114,7 @@ SYSCALL_DEFINE5(mq_timedreceive, mqd_t, mqdes, char __user *, u_msg_ptr,
 
 	audit_mq_sendrecv(mqdes, msg_len, 0, timeout ? &ts : NULL);
 
-	filp = fget(mqdes);
+	filp = fget_light(mqdes, &fput_needed);
 	if (unlikely(!filp)) {
 		ret = -EBADF;
 		goto out;
@@ -1189,7 +1190,7 @@ SYSCALL_DEFINE5(mq_timedreceive, mqd_t, mqdes, char __user *, u_msg_ptr,
 		free_msg(msg_ptr);
 	}
 out_fput:
-	fput(filp);
+	fput_light(filp, fput_needed);
 out:
 	return ret;
 }
@@ -1202,7 +1203,7 @@ out:
 SYSCALL_DEFINE2(mq_notify, mqd_t, mqdes,
 		const struct sigevent __user *, u_notification)
 {
-	int ret;
+	int ret, fput_needed;
 	struct file *filp;
 	struct sock *sock;
 	struct inode *inode;
@@ -1249,13 +1250,13 @@ SYSCALL_DEFINE2(mq_notify, mqd_t, mqdes,
 			skb_put(nc, NOTIFY_COOKIE_LEN);
 			/* and attach it to the socket */
 retry:
-			filp = fget(notification.sigev_signo);
+			filp = fget_light(notification.sigev_signo, &fput_needed);
 			if (!filp) {
 				ret = -EBADF;
 				goto out;
 			}
 			sock = netlink_getsockbyfilp(filp);
-			fput(filp);
+			fput_light(filp, fput_needed);
 			if (IS_ERR(sock)) {
 				ret = PTR_ERR(sock);
 				sock = NULL;
@@ -1276,7 +1277,7 @@ retry:
 		}
 	}
 
-	filp = fget(mqdes);
+	filp = fget_light(mqdes, &fput_needed);
 	if (!filp) {
 		ret = -EBADF;
 		goto out;
@@ -1323,7 +1324,7 @@ retry:
 	}
 	spin_unlock(&info->lock);
 out_fput:
-	fput(filp);
+	fput_light(filp, fput_needed);
 out:
 	if (sock) {
 		netlink_detachskb(sock, nc);
@@ -1339,6 +1340,7 @@ SYSCALL_DEFINE3(mq_getsetattr, mqd_t, mqdes,
 {
 	int ret;
 	struct mq_attr mqstat, omqstat;
+	int fput_needed;
 	struct file *filp;
 	struct inode *inode;
 	struct mqueue_inode_info *info;
@@ -1350,7 +1352,7 @@ SYSCALL_DEFINE3(mq_getsetattr, mqd_t, mqdes,
 			return -EINVAL;
 	}
 
-	filp = fget(mqdes);
+	filp = fget_light(mqdes, &fput_needed);
 	if (!filp) {
 		ret = -EBADF;
 		goto out;
@@ -1387,7 +1389,7 @@ SYSCALL_DEFINE3(mq_getsetattr, mqd_t, mqdes,
 		ret = -EFAULT;
 
 out_fput:
-	fput(filp);
+	fput_light(filp, fput_needed);
 out:
 	return ret;
 }
