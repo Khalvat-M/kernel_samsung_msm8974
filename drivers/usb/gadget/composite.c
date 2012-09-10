@@ -36,9 +36,6 @@
  * with the relevant device-wide data.
  */
 
-/* big enough to hold our biggest descriptor */
-#define USB_BUFSIZ	4096
-
 static struct usb_composite_driver *composite;
 static int (*composite_gadget_bind)(struct usb_composite_dev *cdev);
 
@@ -365,10 +362,11 @@ static int config_buf(struct usb_configuration *config,
 {
 	struct usb_config_descriptor	*c = buf;
 	void				*next = buf + USB_DT_CONFIG_SIZE;
-	int				len = USB_BUFSIZ - USB_DT_CONFIG_SIZE;
+	int				len;
 	struct usb_function		*f;
 	int				status;
 
+	len = USB_COMP_EP0_BUFSIZ - USB_DT_CONFIG_SIZE;
 	/* write the config descriptor */
 	c = buf;
 	c->bLength = USB_DT_CONFIG_SIZE;
@@ -1182,7 +1180,7 @@ composite_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
 	u8				endp;
 	struct usb_configuration *c;
 
-	if (w_length > USB_BUFSIZ)
+	if (w_length > USB_COMP_EP0_BUFSIZ)
 		return value;
 
 	/* partial re-init of the response message; the function or the
@@ -1255,7 +1253,7 @@ composite_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
 				struct usb_configuration, list);
 			if (c && c->descriptors)
 				value = usb_find_descriptor_fillbuf(req->buf,
-						USB_BUFSIZ, c->descriptors,
+						USB_COMP_EP0_BUFSIZ, c->descriptors,
 						USB_DT_OTG);
 			break;
 		case USB_DT_STRING:
@@ -1608,13 +1606,13 @@ static int composite_bind(struct usb_gadget *gadget)
 	cdev->req = usb_ep_alloc_request(gadget->ep0, GFP_KERNEL);
 	if (!cdev->req)
 		goto fail;
-	cdev->req->buf = kmalloc(USB_BUFSIZ, GFP_KERNEL);
+	cdev->req->buf = kmalloc(USB_COMP_EP0_BUFSIZ, GFP_KERNEL);
 	if (!cdev->req->buf)
 		goto fail;
 	cdev->req->complete = composite_setup_complete;
 	gadget->ep0->driver_data = cdev;
 
-	cdev->bufsiz = USB_BUFSIZ;
+	cdev->bufsiz = USB_COMP_EP0_BUFSIZ;
 	cdev->driver = composite;
 
 	/*
