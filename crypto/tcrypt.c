@@ -1219,6 +1219,10 @@ static int do_test(int m)
 		ret += tcrypt_test("ghash");
 		break;
 
+	case 46:
+		ret += tcrypt_test("ghash");
+		break;
+
 	case 100:
 		ret += tcrypt_test("hmac(md5)");
 		break;
