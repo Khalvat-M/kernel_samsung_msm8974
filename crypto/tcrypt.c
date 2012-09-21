@@ -1153,6 +1153,9 @@ static int do_test(int m)
 	case 32:
 		ret += tcrypt_test("ecb(camellia)");
 		ret += tcrypt_test("cbc(camellia)");
+		ret += tcrypt_test("ctr(camellia)");
+		ret += tcrypt_test("lrw(camellia)");
+		ret += tcrypt_test("xts(camellia)");
 		break;
 	case 33:
 		ret += tcrypt_test("sha224");
@@ -1211,6 +1214,10 @@ static int do_test(int m)
 		ret += tcrypt_test("rfc4309(ccm(aes))");
 		break;
 #endif
+
+	case 46:
+		ret += tcrypt_test("ghash");
+		break;
 
 	case 100:
 		ret += tcrypt_test("hmac(md5)");
