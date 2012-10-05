@@ -1,4 +1,4 @@
-TARGETS = breakpoints mqueue vm cpu-hotplug memory-hotplug
+TARGETS = breakpoints mqueue vm cpu-hotplug memory-hotplug epoll
 
 all:
 	for TARGET in $(TARGETS); do \
