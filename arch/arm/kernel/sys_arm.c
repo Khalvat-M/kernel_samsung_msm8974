@@ -194,7 +194,7 @@ asmlinkage int sys_execve(const char __user *filenamei,
 			  const char __user *const __user *envp, struct pt_regs *regs)
 {
 	int error;
-	char * filename;
+	struct filename *filename;
 
 	filename = getname(filenamei);
 	error = PTR_ERR(filename);
@@ -213,7 +213,7 @@ asmlinkage int sys_execve(const char __user *filenamei,
 		}
 #endif	// End of CONFIG_SEC_RESTRICT_FORK
 
-	error = do_execve(filename, argv, envp, regs);
+	error = do_execve(filename->name, argv, envp, regs);
 	putname(filename);
 out:
 	return error;
