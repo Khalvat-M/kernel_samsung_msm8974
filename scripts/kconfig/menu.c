@@ -518,7 +518,7 @@ const char *menu_get_help(struct menu *menu)
 }
 
 static void get_prompt_str(struct gstr *r, struct property *prop,
-			   struct jk_head *head)
+			   struct list_head *head)
 {
 	int i, j;
 	struct menu *submenu[8], *menu, *location = NULL;
@@ -547,12 +547,13 @@ static void get_prompt_str(struct gstr *r, struct property *prop,
 		} else
 			jump->target = location;
 
-		if (CIRCLEQ_EMPTY(head))
+		if (list_empty(head))
 			jump->index = 0;
 		else
-			jump->index = CIRCLEQ_LAST(head)->index + 1;
+			jump->index = list_entry(head->prev, struct jump_key,
+						 entries)->index + 1;
 
-		CIRCLEQ_INSERT_TAIL(head, jump, entries);
+		list_add_tail(&jump->entries, head);
 	}
 
 	if (i > 0) {
@@ -588,7 +589,8 @@ static struct property *get_symbol_prop(struct symbol *sym)
 /*
  * head is optional and may be NULL
  */
-void get_symbol_str(struct gstr *r, struct symbol *sym, struct jk_head *head)
+void get_symbol_str(struct gstr *r, struct symbol *sym,
+		    struct list_head *head)
 {
 	bool hit;
 	struct property *prop;
@@ -635,7 +637,7 @@ void get_symbol_str(struct gstr *r, struct symbol *sym, struct jk_head *head)
 	str_append(r, "\n\n");
 }
 
-struct gstr get_relations_str(struct symbol **sym_arr, struct jk_head *head)
+struct gstr get_relations_str(struct symbol **sym_arr, struct list_head *head)
 {
 	struct symbol *sym;
 	struct gstr res = str_new();
