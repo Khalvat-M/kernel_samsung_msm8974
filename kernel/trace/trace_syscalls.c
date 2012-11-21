@@ -104,7 +104,7 @@ static struct syscall_metadata *syscall_nr_to_meta(int nr)
 	return syscalls_metadata[nr];
 }
 
-enum print_line_t
+static enum print_line_t
 print_syscall_enter(struct trace_iterator *iter, int flags,
 		    struct trace_event *event)
 {
@@ -157,7 +157,7 @@ end:
 	return TRACE_TYPE_HANDLED;
 }
 
-enum print_line_t
+static enum print_line_t
 print_syscall_exit(struct trace_iterator *iter, int flags,
 		   struct trace_event *event)
 {
@@ -297,7 +297,7 @@ static int syscall_exit_define_fields(struct ftrace_event_call *call)
 	return ret;
 }
 
-void ftrace_syscall_enter(void *ignore, struct pt_regs *regs, long id)
+static void ftrace_syscall_enter(void *ignore, struct pt_regs *regs, long id)
 {
 	struct syscall_trace_enter *entry;
 	struct syscall_metadata *sys_data;
@@ -338,7 +338,7 @@ void ftrace_syscall_enter(void *ignore, struct pt_regs *regs, long id)
 						   irq_flags, pc);
 }
 
-void ftrace_syscall_exit(void *ignore, struct pt_regs *regs, long ret)
+static void ftrace_syscall_exit(void *ignore, struct pt_regs *regs, long ret)
 {
 	struct syscall_trace_exit *entry;
 	struct syscall_metadata *sys_data;
@@ -377,7 +377,7 @@ void ftrace_syscall_exit(void *ignore, struct pt_regs *regs, long ret)
 						   irq_flags, pc);
 }
 
-int reg_event_syscall_enter(struct ftrace_event_call *call)
+static int reg_event_syscall_enter(struct ftrace_event_call *call)
 {
 	int ret = 0;
 	int num;
@@ -396,7 +396,7 @@ int reg_event_syscall_enter(struct ftrace_event_call *call)
 	return ret;
 }
 
-void unreg_event_syscall_enter(struct ftrace_event_call *call)
+static void unreg_event_syscall_enter(struct ftrace_event_call *call)
 {
 	int num;
 
@@ -411,7 +411,7 @@ void unreg_event_syscall_enter(struct ftrace_event_call *call)
 	mutex_unlock(&syscall_trace_lock);
 }
 
-int reg_event_syscall_exit(struct ftrace_event_call *call)
+static int reg_event_syscall_exit(struct ftrace_event_call *call)
 {
 	int ret = 0;
 	int num;
@@ -430,7 +430,7 @@ int reg_event_syscall_exit(struct ftrace_event_call *call)
 	return ret;
 }
 
-void unreg_event_syscall_exit(struct ftrace_event_call *call)
+static void unreg_event_syscall_exit(struct ftrace_event_call *call)
 {
 	int num;
 
@@ -475,7 +475,7 @@ unsigned long __init __weak arch_syscall_addr(int nr)
 	return (unsigned long)sys_call_table[nr];
 }
 
-int __init init_ftrace_syscalls(void)
+static int __init init_ftrace_syscalls(void)
 {
 	struct syscall_metadata *meta;
 	unsigned long addr;
