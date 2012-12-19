@@ -939,6 +939,9 @@ void tracing_reset(struct trace_array *tr, int cpu)
 {
 	struct ring_buffer *buffer = tr->buffer;
 
+	if (!buffer)
+		return;
+
 	ring_buffer_record_disable(buffer);
 
 	/* Make sure all commits have finished */
@@ -952,6 +955,9 @@ void tracing_reset_online_cpus(struct trace_array *tr)
 {
 	struct ring_buffer *buffer = tr->buffer;
 	int cpu;
+
+	if (!buffer)
+		return;
 
 	ring_buffer_record_disable(buffer);
 
