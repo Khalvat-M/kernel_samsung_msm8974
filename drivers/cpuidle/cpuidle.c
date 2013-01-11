@@ -146,7 +146,6 @@ int cpuidle_idle_call(void)
 		return 0;
 	}
 
-	trace_power_start_rcuidle(POWER_CSTATE, next_state, dev->cpu);
 	trace_cpu_idle_rcuidle(next_state, dev->cpu);
 
 	if (drv->states[next_state].flags & CPUIDLE_FLAG_TIMER_STOP)
@@ -163,7 +162,6 @@ int cpuidle_idle_call(void)
 		clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_EXIT,
 				   &dev->cpu);
 
-	trace_power_end_rcuidle(dev->cpu);
 	trace_cpu_idle_rcuidle(PWR_EVENT_EXIT, dev->cpu);
 
 	/* give the governor an opportunity to reflect on the outcome */
