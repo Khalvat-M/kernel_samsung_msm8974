@@ -532,6 +532,15 @@ extern void ipv6_select_ident(struct net *net, struct frag_hdr *fhdr,
 void ipv6_proxy_select_ident(struct net *net, struct sk_buff *skb);
 
 /*
+ *	Header manipulation
+ */
+static inline void ip6_flow_hdr(struct ipv6hdr *hdr, unsigned int tclass,
+				__be32 flowlabel)
+{
+	*(__be32 *)hdr = ntohl(0x60000000 | (tclass << 20)) | flowlabel;
+}
+
+/*
  *	Prototypes exported by ipv6
  */
 
