@@ -948,7 +948,7 @@ void ip6_route_input(struct sk_buff *skb)
 		.flowi6_iif = skb->dev->ifindex,
 		.daddr = iph->daddr,
 		.saddr = iph->saddr,
-		.flowlabel = (* (__be32 *) iph) & IPV6_FLOWINFO_MASK,
+		.flowlabel = ip6_flowinfo(iph),
 		.flowi6_mark = skb->mark,
 		.flowi6_proto = iph->nexthdr,
 	};
@@ -1111,7 +1111,7 @@ void ip6_update_pmtu(struct sk_buff *skb, struct net *net, __be32 mtu,
 	fl6.flowi6_flags = FLOWI_FLAG_PRECOW_METRICS;
 	fl6.daddr = iph->daddr;
 	fl6.saddr = iph->saddr;
-	fl6.flowlabel = (*(__be32 *) iph) & IPV6_FLOWINFO_MASK;
+	fl6.flowlabel = ip6_flowinfo(iph);
 	fl6.flowi6_uid = uid;
 
 	dst = ip6_route_output(net, NULL, &fl6);
