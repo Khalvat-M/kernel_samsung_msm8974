@@ -937,7 +937,7 @@ int ping_recvmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
 							  IP6CB(skb)->iif);
 
 		if (inet6_sk(sk)->rxopt.all)
-			pingv6_ops.datagram_recv_ctl(sk, msg, skb);
+			pingv6_ops.ip6_datagram_recv_ctl(sk, msg, skb);
 #endif
 	} else {
 		BUG();
