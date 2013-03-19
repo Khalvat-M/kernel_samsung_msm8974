@@ -220,6 +220,7 @@ static int unix_mkname(struct sockaddr_un *sunaddr, int len, unsigned int *hashp
 		 */
 		((char *)sunaddr)[len] = 0;
 		len = strlen(sunaddr->sun_path)+1+sizeof(short);
+		*hashp = 0;
 		return len;
 	}
 
@@ -1623,6 +1624,7 @@ static int unix_dgram_sendmsg(struct kiocb *kiocb, struct socket *sock,
 		sunaddr = NULL;
 		err = -ENOTCONN;
 		other = unix_peer_get(sk);
+		hash = 0;
 		if (!other)
 			goto out;
 	}
