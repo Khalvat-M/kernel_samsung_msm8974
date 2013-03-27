@@ -190,6 +190,9 @@ static int suspend_enter(suspend_state_t state, bool *wakeup)
 			goto Platform_wake;
 	}
 
+	if (suspend_test(TEST_PLATFORM))
+		goto Platform_wake;
+
 	/*
 	 * PM_SUSPEND_FREEZE equals
 	 * frozen processes + suspended devices + idle processors.
@@ -200,9 +203,6 @@ static int suspend_enter(suspend_state_t state, bool *wakeup)
 		freeze_enter();
 		goto Platform_wake;
 	}
-
-	if (suspend_test(TEST_PLATFORM))
-		goto Platform_wake;
 
 	error = disable_nonboot_cpus();
 	if (error || suspend_test(TEST_CPUS))
