@@ -23,9 +23,6 @@
 
 #include "base.h"
 
-#define to_platform_driver(drv)	(container_of((drv), struct platform_driver, \
-				 driver))
-
 struct device platform_bus = {
 	.init_name	= "platform",
 };
