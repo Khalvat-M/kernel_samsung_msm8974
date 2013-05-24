@@ -4,7 +4,6 @@ TARGETS += efivarfs
 TARGETS += memory-hotplug
 TARGETS += mqueue
 TARGETS += ptrace
-TARGETS += soft-dirty
 TARGETS += vm
 
 all:
