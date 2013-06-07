@@ -2352,6 +2352,37 @@ out_iput:
 	return error;
 }
 
+static int
+shmem_tmpfile(struct inode *dir, struct dentry *dentry, umode_t mode)
+{
+	struct inode *inode;
+	int error = -ENOSPC;
+
+	inode = shmem_get_inode(dir->i_sb, dir, mode, 0, VM_NORESERVE);
+	if (inode) {
+		error = security_inode_init_security(inode, dir,
+						     NULL,
+						     shmem_initxattrs, NULL);
+		if (error) {
+			if (error != -EOPNOTSUPP) {
+				iput(inode);
+				return error;
+			}
+		}
+#ifdef CONFIG_TMPFS_POSIX_ACL
+		error = generic_acl_init(inode, dir);
+		if (error) {
+			iput(inode);
+			return error;
+		}
+#else
+		error = 0;
+#endif
+		d_tmpfile(dentry, inode);
+	}
+	return error;
+}
+
 static int shmem_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
 {
 	int error;
@@ -3178,6 +3209,7 @@ static const struct inode_operations shmem_dir_inode_operations = {
 	.rmdir		= shmem_rmdir,
 	.mknod		= shmem_mknod,
 	.rename		= shmem_rename,
+	.tmpfile	= shmem_tmpfile,
 #endif
 #ifdef CONFIG_TMPFS_XATTR
 	.setxattr	= shmem_setxattr,
