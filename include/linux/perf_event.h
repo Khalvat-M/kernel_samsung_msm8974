@@ -396,6 +396,23 @@ struct perf_event_mmap_page {
 	__u16	time_shift;
 	__u32	time_mult;
 	__u64	time_offset;
+	/*
+	 * If cap_usr_time_zero, the hardware clock (e.g. TSC) can be calculated
+	 * from sample timestamps.
+	 *
+	 *   time = timestamp - time_zero;
+	 *   quot = time / time_mult;
+	 *   rem  = time % time_mult;
+	 *   cyc = (quot << time_shift) + (rem << time_shift) / time_mult;
+	 *
+	 * And vice versa:
+	 *
+	 *   quot = cyc >> time_shift;
+	 *   rem  = cyc & ((1 << time_shift) - 1);
+	 *   timestamp = time_zero + quot * time_mult +
+	 *               ((rem * time_mult) >> time_shift);
+	 */
+	__u64   time_zero;
 	__u32   size;                   /* Header size up to __reserved[] fields. */
 		/*
 		 * Hole for extension of the self monitor capabilities
