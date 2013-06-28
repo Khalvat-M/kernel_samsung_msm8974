@@ -4,6 +4,7 @@ TARGETS += efivarfs
 TARGETS += memory-hotplug
 TARGETS += mqueue
 TARGETS += ptrace
+TARGETS += timers
 TARGETS += vm
 
 all:
