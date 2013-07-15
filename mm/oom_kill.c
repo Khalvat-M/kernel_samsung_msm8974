@@ -290,7 +290,7 @@ static enum oom_constraint constrained_alloc(struct zonelist *zonelist,
 
 /*
  * Simple selection loop. We chose the process with the highest
- * number of 'points'. We expect the caller will lock the tasklist.
+ * number of 'points'.  Returns -1 on scan abort.
  *
  * (not docbooked, we don't want this one cluttering up the manual)
  */
@@ -323,7 +323,7 @@ static struct task_struct *select_bad_process(unsigned int *ppoints,
 			if (unlikely(frozen(p)))
 				__thaw_task(p);
 			if (!force_kill)
-				return ERR_PTR(-1UL);
+				return (struct task_struct *)(-1UL);
 		}
 		if (!p->mm)
 			continue;
@@ -348,7 +348,7 @@ static struct task_struct *select_bad_process(unsigned int *ppoints,
 				 * some other task unnecessarily.
 				 */
 				if (!(p->group_leader->ptrace & PT_TRACE_EXIT))
-					return ERR_PTR(-1UL);
+					return (struct task_struct *)(-1UL);
 			}
 		}
 
@@ -761,7 +761,7 @@ void out_of_memory(struct zonelist *zonelist, gfp_t gfp_mask,
 		read_unlock(&tasklist_lock);
 		panic("Out of memory and no killable processes...\n");
 	}
-	if (PTR_ERR(p) != -1UL) {
+	if (p != (void *)-1UL) {
 		oom_kill_process(p, gfp_mask, order, points, totalpages, NULL,
 				 nodemask, "Out of memory");
 		killed = 1;
