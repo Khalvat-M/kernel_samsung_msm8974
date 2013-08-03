@@ -1107,9 +1107,6 @@ err_out_unregister:
 		per_cpu(cpufreq_cpu_data, j) = NULL;
 	spin_unlock_irqrestore(&cpufreq_driver_lock, flags);
 
-	kobject_put(&policy->kobj);
-	wait_for_completion(&policy->kobj_unregister);
-
 err_unlock_policy:
 	unlock_policy_rwsem_write(cpu);
 	free_cpumask_var(policy->related_cpus);
