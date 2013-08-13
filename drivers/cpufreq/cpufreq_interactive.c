@@ -1170,7 +1170,7 @@ static ssize_t store_above_hispeed_delay(
 	struct kobject *kobj, struct attribute *attr, const char *buf,
 	size_t count)
 {
-	int ntokens;
+	int ntokens, i;
 	unsigned int *new_above_hispeed_delay = NULL;
 	unsigned long flags;
 #ifdef CONFIG_MODE_AUTO_CHANGE
@@ -1183,6 +1183,16 @@ static ssize_t store_above_hispeed_delay(
 #ifdef CONFIG_MODE_AUTO_CHANGE
 	spin_lock_irqsave(&mode_lock, flags2);
 #endif
+
+	/* Make sure frequencies are in ascending order. */
+	for (i = 3; i < ntokens; i += 2) {
+		if (new_above_hispeed_delay[i] <=
+		    new_above_hispeed_delay[i - 2]) {
+			kfree(new_above_hispeed_delay);
+			return -EINVAL;
+		}
+	}
+
 	spin_lock_irqsave(&above_hispeed_delay_lock, flags);
 #ifdef CONFIG_MODE_AUTO_CHANGE
 	if (above_hispeed_delay_set[param_index] != default_above_hispeed_delay)
