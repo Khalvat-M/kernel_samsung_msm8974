@@ -44,6 +44,7 @@ void drop_slab(void)
 		.gfp_mask = GFP_KERNEL,
 	};
 
+	nodes_setall(shrink.nodes_to_scan);
 	do {
 		shrink.priority = DEF_PRIORITY;
 		nr_objects = shrink_slab(&shrink, 1000, 1000);
