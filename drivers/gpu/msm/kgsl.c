@@ -581,7 +581,6 @@ int kgsl_context_init(struct kgsl_device_private *dev_priv,
 	context->device = dev_priv->device;
 	context->dev_priv = dev_priv;
 	context->proc_priv = dev_priv->process_priv;
-	context->pid = task_tgid_nr(current);
 	context->tid = task_pid_nr(current);
 
 	ret = kgsl_sync_timeline_create(context);
@@ -1005,6 +1004,8 @@ kgsl_get_process_private(struct kgsl_device *device)
 
 	if (test_bit(KGSL_PROCESS_INIT, &private->priv))
 		goto done;
+
+	get_task_comm(private->comm, current->group_leader);
 
 	private->mem_rb = RB_ROOT;
 	idr_init(&private->mem_idr);
