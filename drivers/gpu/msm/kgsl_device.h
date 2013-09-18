@@ -402,7 +402,6 @@ struct kgsl_process_private;
  * sync_pt timestamp expires
  * @events: A kgsl_event_group for this context - contains the list of GPU
  * events
- * @pid: process that owns this context.
  * @tid: task that created this context.
  * @pagefault_ts: global timestamp of the pagefault, if KGSL_CONTEXT_PAGEFAULT
  * is set.
@@ -414,7 +413,6 @@ struct kgsl_process_private;
 struct kgsl_context {
 	struct kref refcount;
 	uint32_t id;
-	pid_t pid;
 	pid_t tid;
 	struct kgsl_device_private *dev_priv;
 	struct kgsl_process_private *proc_priv;
@@ -436,6 +434,7 @@ struct kgsl_context {
  * all devices)
  * @priv: Internal flags, use KGSL_PROCESS_* values
  * @pid: ID for the task owner of the process
+ * @comm: task name of the process
  * @mem_lock: Spinlock to protect the process memory lists
  * @refcount: kref object for reference counting the process
  * @process_private_mutex: Mutex to synchronize access to the process struct
@@ -449,6 +448,7 @@ struct kgsl_context {
 struct kgsl_process_private {
 	unsigned long priv;
 	pid_t pid;
+	char comm[TASK_COMM_LEN];
 	spinlock_t mem_lock;
 
 	/* General refcount for process private struct obj */
@@ -733,8 +733,8 @@ static inline struct kgsl_context *kgsl_context_get_owner(
 
 	context = kgsl_context_get(dev_priv->device, id);
 
-	/* Verify that the context belongs to current calling process. */
-	if (context != NULL && context->pid != dev_priv->process_priv->pid) {
+	/* Verify that the context belongs to current calling fd. */
+	if (context != NULL && context->dev_priv != dev_priv) {
 		kgsl_context_put(context);
 		return NULL;
 	}
