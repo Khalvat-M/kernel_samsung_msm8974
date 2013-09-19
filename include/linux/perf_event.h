@@ -344,11 +344,18 @@ struct perf_event_mmap_page {
 	__s64	offset;			/* add to hardware event value */
 	__u64	time_enabled;		/* time event active */
 	__u64	time_running;		/* time event on cpu */
+
 	union {
-		__u64	capabilities;
-		__u64	cap_usr_time  : 1,
-			cap_usr_rdpmc : 1,
-			cap_____res   : 62;
+		__u64   capabilities;
+		struct {
+			__u64   cap_bit0                : 1, /* Always 0, deprecated, see commit 860f085b74e9 */
+				cap_bit0_is_deprecated  : 1, /* Always 1, signals that bit 0 is zero */
+
+				cap_user_rdpmc          : 1, /* The RDPMC instruction can be used to read counts */
+				cap_user_time           : 1, /* The time_* fields are used */
+				cap_user_time_zero      : 1, /* The time_zero field is used */
+				cap_____res             : 59;
+		};
 	};
 
 	/*
@@ -389,12 +396,12 @@ struct perf_event_mmap_page {
 	__u16	time_shift;
 	__u32	time_mult;
 	__u64	time_offset;
-
+	__u32   size;                   /* Header size up to __reserved[] fields. */
 		/*
 		 * Hole for extension of the self monitor capabilities
 		 */
 
-	__u64	__reserved[120];	/* align to 1k */
+	__u8    __reserved[118*8+4];    /* align to 1k. */
 
 	/*
 	 * Control data for the mmap() data buffer.
