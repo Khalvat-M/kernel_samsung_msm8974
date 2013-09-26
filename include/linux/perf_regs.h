@@ -2,7 +2,7 @@
 #define _LINUX_PERF_REGS_H
 
 #ifdef CONFIG_HAVE_PERF_REGS
-#include <asm/perf_regs.h>
+#include <uapi/asm/perf_regs.h>
 u64 perf_reg_value(struct pt_regs *regs, int idx);
 int perf_reg_validate(u64 mask);
 u64 perf_reg_abi(struct task_struct *task);
