@@ -18,7 +18,6 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/delay.h>
-#include <linux/of_coresight.h>
 #include <linux/input.h>
 
 #include <mach/socinfo.h>
@@ -1767,9 +1766,6 @@ static int adreno_of_get_pdata(struct platform_device *pdev)
 	if (ret)
 		goto err;
 
-	pdata->coresight_pdata = of_get_coresight_platform_data(&pdev->dev,
-			pdev->dev.of_node);
-
 	pdev->dev.platform_data = pdata;
 	return 0;
 
@@ -1879,8 +1875,6 @@ adreno_probe(struct platform_device *pdev)
 	device->flags &= ~KGSL_FLAGS_SOFT_RESET;
 	pdata = kgsl_device_get_drvdata(device);
 
-	adreno_coresight_init(pdev);
-
 	adreno_input_handler.private = device;
 
 	/*
@@ -1912,7 +1906,6 @@ static int __devexit adreno_remove(struct platform_device *pdev)
 
 	input_unregister_handler(&adreno_input_handler);
 
-	adreno_coresight_remove(pdev);
 	adreno_profile_close(device);
 
 	kgsl_pwrscale_close(device);
