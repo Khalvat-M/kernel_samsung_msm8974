@@ -10,7 +10,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/export.h>
 
-#ifdef CONFIG_PM_RUNTIME
+#ifdef CONFIG_PM
 /**
  * pm_generic_runtime_idle - Generic runtime idle callback for subsystems.
  * @dev: Device to handle.
@@ -71,7 +71,7 @@ int pm_generic_runtime_resume(struct device *dev)
 	return ret;
 }
 EXPORT_SYMBOL_GPL(pm_generic_runtime_resume);
-#endif /* CONFIG_PM_RUNTIME */
+#endif /* CONFIG_PM */
 
 #ifdef CONFIG_PM_SLEEP
 /**
