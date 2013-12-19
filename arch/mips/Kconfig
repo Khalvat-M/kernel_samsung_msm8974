@@ -30,6 +30,7 @@ config MIPS
 	select HAVE_MEMBLOCK
 	select HAVE_MEMBLOCK_NODE_MAP
 	select ARCH_DISCARD_MEMBLOCK
+	select HAVE_CC_STACKPROTECTOR
 
 menu "Machine selection"
 
