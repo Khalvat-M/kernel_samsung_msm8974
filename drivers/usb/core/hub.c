@@ -3015,7 +3015,8 @@ static int hub_suspend(struct usb_interface *intf, pm_message_t msg)
 
 		udev = hdev->children [port1-1];
 		if (udev && udev->can_submit) {
-			dev_warn(&intf->dev, "port %d nyet suspended\n", port1);
+			dev_warn(&intf->dev, "port %d not suspended yet\n",
+					port1);
 			if (PMSG_IS_AUTO(msg))
 				return -EBUSY;
 		}
@@ -4408,7 +4409,7 @@ static void hub_events(void)
 
 static int hub_thread(void *__unused)
 {
-	/* khubd needs to be freezable to avoid intefering with USB-PERSIST
+	/* khubd needs to be freezable to avoid interfering with USB-PERSIST
 	 * port handover.  Otherwise it might see that a full-speed device
 	 * was gone before the EHCI controller had handed its port over to
 	 * the companion full-speed controller.
