@@ -750,9 +750,12 @@ static void cpufreq_interactive_timer(unsigned long data)
 		mod_min_sample_time = min_sample_time;
 
 	if (pcpu->minfreq_boost) {
+		if (sampling_down_factor &&
+			(pcpu->policy->cur != pcpu->policy->max))
 		mod_min_sample_time = 0;
 		pcpu->minfreq_boost = 0;
 	}
+
 	if (new_freq < pcpu->floor_freq) {
 		if (now - pcpu->floor_validate_time < mod_min_sample_time) {
 			trace_cpufreq_interactive_notyet(
