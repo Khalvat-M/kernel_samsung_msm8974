@@ -7,6 +7,7 @@ TARGETS += ptrace
 TARGETS += timers
 TARGETS += vm
 TARGETS += powerpc
+TARGETS += user
 
 all:
 	for TARGET in $(TARGETS); do \
