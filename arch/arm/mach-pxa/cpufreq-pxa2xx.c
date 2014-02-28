@@ -311,6 +311,7 @@ static int pxa_set_target(struct cpufreq_policy *policy,
 	new_freq_mem = pxa_freq_settings[idx].membus;
 	freqs.old = policy->cur;
 	freqs.new = new_freq_cpu;
+	freqs.cpu = policy->cpu;
 
 	if (freq_debug)
 		pr_debug("Changing CPU frequency to %d Mhz, (SDRAM %d Mhz)\n",
@@ -326,7 +327,7 @@ static int pxa_set_target(struct cpufreq_policy *policy,
 	 * you should add a notify client with any platform specific
 	 * Vcc changing capability
 	 */
-	cpufreq_notify_transition(policy, &freqs, CPUFREQ_PRECHANGE);
+	cpufreq_notify_transition(&freqs, CPUFREQ_PRECHANGE);
 
 	/* Calculate the next MDREFR.  If we're slowing down the SDRAM clock
 	 * we need to preset the smaller DRI before the change.	 If we're
@@ -381,7 +382,7 @@ static int pxa_set_target(struct cpufreq_policy *policy,
 	 * you should add a notify client with any platform specific
 	 * SDRAM refresh timer adjustments
 	 */
-	cpufreq_notify_transition(policy, &freqs, CPUFREQ_POSTCHANGE);
+	cpufreq_notify_transition(&freqs, CPUFREQ_POSTCHANGE);
 
 	/*
 	 * Even if voltage setting fails, we don't report it, as the frequency
