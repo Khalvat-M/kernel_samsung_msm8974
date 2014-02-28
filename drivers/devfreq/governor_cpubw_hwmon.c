@@ -14,7 +14,6 @@
 #define pr_fmt(fmt) "cpubw-hwmon: " fmt
 
 #include <linux/kernel.h>
-#include <asm/sizes.h>
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/io.h>
