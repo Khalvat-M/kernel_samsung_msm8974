@@ -1070,6 +1070,9 @@ rcu_start_gp(struct rcu_state *rsp, unsigned long flags)
 	}
 
 	/* Advance to a new grace period and initialize state. */
+	/* Record GP times before starting GP, hence smp_store_release(). */
+	smp_store_release(&rsp->gpnum, rsp->gpnum + 1);
+
 	rsp->gpnum++;
 	trace_rcu_grace_period(rsp->name, rsp->gpnum, "start");
 	WARN_ON_ONCE(rsp->fqs_state == RCU_GP_INIT);
@@ -1080,6 +1083,7 @@ rcu_start_gp(struct rcu_state *rsp, unsigned long flags)
 
 	/* Exclude any concurrent CPU-hotplug operations. */
 	raw_spin_lock(&rsp->onofflock);  /* irqs already disabled. */
+	smp_mb__after_unlock_lock(); /* ->gpnum increment before GP! */
 
 	/*
 	 * Set the quiescent-state-needed bits in all the rcu_node
@@ -1177,7 +1181,8 @@ static void rcu_report_qs_rsp(struct rcu_state *rsp, unsigned long flags)
 		raw_spin_lock(&rnp->lock); /* irqs already disabled. */
 	}
 
-	rsp->completed = rsp->gpnum;  /* Declare the grace period complete. */
+	/* Declare grace period done. */
+	ACCESS_ONCE(rsp->completed) = rsp->gpnum;
 	trace_rcu_grace_period(rsp->name, rsp->completed, "end");
 	rsp->fqs_state = RCU_GP_IDLE;
 	rcu_start_gp(rsp, flags);  /* releases root node's rnp->lock. */
@@ -2017,6 +2022,58 @@ void synchronize_rcu_bh(void)
 		wait_rcu_gp(call_rcu_bh);
 }
 EXPORT_SYMBOL_GPL(synchronize_rcu_bh);
+
+/**
+ * get_state_synchronize_rcu - Snapshot current RCU state
+ *
+ * Returns a cookie that is used by a later call to cond_synchronize_rcu()
+ * to determine whether or not a full grace period has elapsed in the
+ * meantime.
+ */
+unsigned long get_state_synchronize_rcu(void)
+{
+       /*
+        * Any prior manipulation of RCU-protected data must happen
+        * before the load from ->gpnum.
+        */
+       smp_mb();  /* ^^^ */
+
+       /*
+        * Make sure this load happens before the purportedly
+        * time-consuming work between get_state_synchronize_rcu()
+        * and cond_synchronize_rcu().
+        */
+       return smp_load_acquire(&rcu_state->gpnum);
+}
+EXPORT_SYMBOL_GPL(get_state_synchronize_rcu);
+
+/**
+ * cond_synchronize_rcu - Conditionally wait for an RCU grace period
+ *
+ * @oldstate: return value from earlier call to get_state_synchronize_rcu()
+ *
+ * If a full RCU grace period has elapsed since the earlier call to
+ * get_state_synchronize_rcu(), just return.  Otherwise, invoke
+ * synchronize_rcu() to wait for a full grace period.
+ *
+ * Yes, this function does not take counter wrap into account.  But
+ * counter wrap is harmless.  If the counter wraps, we have waited for
+ * more than 2 billion grace periods (and way more on a 64-bit system!),
+ * so waiting for one additional grace period should be just fine.
+ */
+void cond_synchronize_rcu(unsigned long oldstate)
+{
+       unsigned long newstate;
+
+       /*
+        * Ensure that this load happens before any RCU-destructive
+        * actions the caller might carry out after we return.
+        */
+       newstate = smp_load_acquire(&rcu_state->completed);
+       if (ULONG_CMP_GE(oldstate, newstate))
+               synchronize_rcu();
+}
+EXPORT_SYMBOL_GPL(cond_synchronize_rcu);
 
 static atomic_t sync_sched_expedited_started = ATOMIC_INIT(0);
 static atomic_t sync_sched_expedited_done = ATOMIC_INIT(0);
