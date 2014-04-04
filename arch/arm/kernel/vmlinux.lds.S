@@ -8,7 +8,7 @@
 #include <asm/thread_info.h>
 #include <asm/memory.h>
 #include <asm/page.h>
-#ifdef CONFIG_STRICT_MEMORY_RWX
+#if defined(CONFIG_STRICT_MEMORY_RWX) || defined(CONFIG_ARM_KERNMEM_PERMS)
 #include <asm/pgtable.h>
 #endif
 
@@ -93,7 +93,7 @@ SECTIONS
 		_text = .;
 		HEAD_TEXT
 	}
-#ifdef CONFIG_STRICT_MEMORY_RWX
+#if defined(CONFIG_STRICT_MEMORY_RWX) || defined(CONFIG_ARM_KERNMEM_PERMS)
 	. = ALIGN(1<<SECTION_SHIFT);
 #endif
 
@@ -144,7 +144,7 @@ SECTIONS
 	_etext = .;			/* End of text and rodata section */
 
 #ifndef CONFIG_XIP_KERNEL
-#ifdef CONFIG_STRICT_MEMORY_RWX
+#if defined(CONFIG_STRICT_MEMORY_RWX) || defined(CONFIG_ARM_KERNMEM_PERMS)
 	. = ALIGN(1<<SECTION_SHIFT);
 #else
 	. = ALIGN(PAGE_SIZE);
@@ -228,7 +228,11 @@ SECTIONS
 	. = PAGE_OFFSET + TEXT_OFFSET;
 #else
 	__init_end = .;
+#ifdef CONFIG_ARM_KERNMEM_PERMS
+	. = ALIGN(1<<SECTION_SHIFT);
+#else
 	. = ALIGN(THREAD_SIZE);
+#endif
 	__data_loc = .;
 #endif
 
