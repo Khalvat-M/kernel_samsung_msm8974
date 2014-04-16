@@ -207,6 +207,7 @@ exuberant()
 	--regex-c='/DEFINE_PCI_DEVICE_TABLE\((\w*)/\1/v/'		\
 	--regex-c='/(^\s)OFFSET\((\w*)/\2/v/'				\
 	--regex-c='/(^\s)DEFINE\((\w*)/\2/v/'				\
+	--regex-c='/DEFINE_HASHTABLE\((\w*)/\1/v/'			\
 	--regex-c++='/TASK_PFA_TEST\([^,]*,\s*([^)]*)\)/task_\1/'	\
 	--regex-c++='/TASK_PFA_SET\([^,]*,\s*([^)]*)\)/task_set_\1/'	\
 	--regex-c++='/TASK_PFA_CLEAR\([^,]*,\s*([^)]*)\)/task_clear_\1/'
@@ -254,7 +255,8 @@ emacs()
 	--regex='/__TESTCLEARFLAG_FALSE(\([^,)]*\).*/__TestClearPage\1/' \
 	--regex='/_PE(\([^,)]*\).*/PEVENT_ERRNO__\1/'		\
 	--regex='/PCI_OP_READ(\([a-z]*[a-z]\).*[1-4])/pci_bus_read_config_\1/' \
-	--regex='/PCI_OP_WRITE(\([a-z]*[a-z]\).*[1-4])/pci_bus_write_config_\1/' \
+	--regex='/PCI_OP_WRITE(\([a-z]*[a-z]\).*[1-4])/pci_bus_write_config_\1/'\
+	--regex='/DEFINE_HASHTABLE\((\w*)/\1/v/'		\
 	--regex='/TASK_PFA_TEST(\([^,]*,\s*([^)]*)\)/task_\1/'		\
 	--regex='/TASK_PFA_SET(\([^,]*,\s*([^)]*)\)/task_set_\1/'	\
 	--regex='/TASK_PFA_CLEAR(\([^,]*,\s*([^)]*)\)/task_clear_\1/'
