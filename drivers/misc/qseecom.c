@@ -806,6 +806,12 @@ static int __qseecom_process_incomplete_cmd(struct qseecom_dev_handle *data,
 			pr_err("Listener Svc %d does not exist\n", lstnr);
 			return -EINVAL;
 		}
+
+		if (!ptr_svc->ihandle) {
+			pr_err("Client handle is not initialized\n");
+			return -EINVAL;
+		}
+
 		if (ptr_svc->svc.listener_id != lstnr) {
 			pr_warning("Service requested for does on exist\n");
 			return -ERESTARTSYS;
@@ -1393,6 +1399,11 @@ static int qseecom_send_service_cmd(struct qseecom_dev_handle *data,
 	if (__validate_send_service_cmd_inputs(data, &req))
 		return -EINVAL;
 
+	if (!data || !data->client.ihandle) {
+		pr_err("Client or client handle is not initialized\n");
+		return -EINVAL;
+	}
+
 	data->type = QSEECOM_SECURE_SERVICE;
 
 	switch (req.cmd_id) {
@@ -1605,6 +1616,11 @@ static int __qseecom_send_cmd(struct qseecom_dev_handle *data,
 
 	if (req->cmd_req_len > UINT_MAX - req->resp_len) {
 		pr_err("Integer overflow detected in req_len & rsp_len, exiting now\n");
+		return -EINVAL;
+	}
+
+	if (!data || !data->client.ihandle) {
+		pr_err("Client or client handle is not initialized\n");
 		return -EINVAL;
 	}
 
