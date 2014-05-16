@@ -6988,6 +6988,13 @@ SYSCALL_DEFINE5(perf_event_open,
 		static_key_slow_inc(&perf_sched_events.key);
 	}
 
+	if (is_sampling_event(event)) {
+		if (event->pmu->capabilities & PERF_PMU_CAP_NO_INTERRUPT) {
+			err = -ENOTSUPP;
+			goto err_alloc;
+		}
+	}
+
 	/*
 	 * Special case software events and allow them to be part of
 	 * any hardware group.
