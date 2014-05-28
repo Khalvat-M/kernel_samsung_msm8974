@@ -4918,11 +4918,6 @@ struct perf_comm_event {
 	} event_id;
 };
 
-static int perf_event_comm_match(struct perf_event *event)
-{
-	return event->attr.comm;
-}
-
 static void perf_event_comm_output(struct perf_event *event,
 				   void *data)
 {
@@ -4979,7 +4974,7 @@ static int perf_event_comm_match(struct perf_event *event)
        return event->attr.comm;
 }
 
-void perf_event_comm(struct task_struct *task)
+void perf_event_comm(struct task_struct *task, bool exec)
 {
 	struct perf_comm_event comm_event;
 	struct perf_event_context *ctx;
@@ -5003,7 +4998,7 @@ void perf_event_comm(struct task_struct *task)
 		.event_id  = {
 			.header = {
 				.type = PERF_RECORD_COMM,
-				.misc = 0,
+				.misc = exec ? PERF_RECORD_MISC_COMM_EXEC : 0,
 				/* .size */
 			},
 			/* .pid */
