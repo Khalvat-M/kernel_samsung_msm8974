@@ -232,11 +232,11 @@ static int proc_root_getattr(struct vfsmount *mnt, struct dentry *dentry, struct
 
 static struct dentry *proc_root_lookup(struct inode * dir, struct dentry * dentry, struct nameidata *nd)
 {
-	if (!proc_lookup(dir, dentry, nd)) {
+	if (!proc_pid_lookup(dir, dentry, nd)) {
 		return NULL;
 	}
 	
-	return proc_pid_lookup(dir, dentry, nd);
+	return proc_lookup(dir, dentry, nd);
 }
 
 static int proc_root_readdir(struct file * filp,
