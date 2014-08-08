@@ -1,6 +1,7 @@
 TARGETS = breakpoints
 TARGETS += cpu-hotplug
 TARGETS += efivarfs
+TARGETS += memfd
 TARGETS += memory-hotplug
 TARGETS += mqueue
 TARGETS += ptrace
