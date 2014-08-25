@@ -60,6 +60,8 @@
 #define CREATE_TRACE_POINTS
 #include "mdss_mdp_trace.h"
 
+#define AUTOSUSPEND_TIMEOUT_MS	200
+
 struct mdss_data_type *mdss_res;
 static int mdp_clk_cnt;
 
