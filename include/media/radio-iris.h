@@ -76,6 +76,8 @@
 #define MAX_SINR_TH  127
 #define MIN_SINR_SAMPLES  0x01
 #define MAX_SINR_SAMPLES  0xFF
+#define MIN_BLEND_HI  -128
+#define MAX_BLEND_HI  127
 
 /* ---- HCI Packet structures ---- */
 #define RADIO_HCI_COMMAND_HDR_SIZE sizeof(struct radio_hci_command_hdr)
@@ -127,6 +129,7 @@
 #define FM_AF_LIST_MAX_SIZE   200
 #define AF_LIST_MAX     (FM_AF_LIST_MAX_SIZE / 4) /* Each AF frequency consist
 							of sizeof(int) bytes */
+#define MAX_BLEND_INDEX 49
 /* HCI timeouts */
 #define RADIO_HCI_TIMEOUT	(10000)	/* 10 seconds */
 
@@ -223,6 +226,8 @@ void radio_hci_event_packet(struct radio_hci_dev *hdev, struct sk_buff *skb);
 #define HCI_OCF_FM_SET_EVENT_MASK           0x0016
 #define HCI_OCF_FM_SET_CH_DET_THRESHOLD     0x0017
 #define HCI_OCF_FM_GET_CH_DET_THRESHOLD     0x0018
+#define HCI_OCF_FM_SET_BLND_TBL             0x001B
+#define HCI_OCF_FM_GET_BLND_TBL             0x001C
 /* HCI trans control commans opcode*/
 #define HCI_OCF_FM_ENABLE_TRANS_REQ         0x0001
 #define HCI_OCF_FM_DISABLE_TRANS_REQ        0x0002
@@ -295,6 +300,7 @@ void radio_hci_event_packet(struct radio_hci_dev *hdev, struct sk_buff *skb);
 #define HCI_FM_DISABLE_TRANS_CMD 14
 #define HCI_FM_GET_TX_CONFIG 15
 #define HCI_FM_GET_DET_CH_TH_CMD 16
+#define HCI_FM_GET_BLND_TBL_CMD 17
 
 /* Defines for FM TX*/
 #define TX_PS_DATA_LENGTH 108
@@ -421,6 +427,18 @@ struct hci_fm_ch_det_threshold {
 	__u8 low_th;
 	__u8 high_th;
 
+} __packed;
+
+struct hci_fm_blend_table {
+	__u8 ucBlendType;
+	__u8 ucBlendRampRateUp;
+	__u8 ucBlendDebounceNumSampleUp;
+	__u8 ucBlendDebounceIdxUp;
+	__u8 ucBlendSinrIdxSkipStep;
+	__u8 scBlendSinrHi;
+	__u8 scBlendRmssiHi;
+	__u8 ucBlendIndexHi;
+	__u8 ucBlendIndex[MAX_BLEND_INDEX];
 } __packed;
 
 /*HCI events*/
@@ -1110,4 +1128,13 @@ static inline int is_valid_fm_state(int state)
 	else
 		return 0;
 }
+
+static inline int is_valid_blend_value(int val)
+{
+	if ((val >= MIN_BLEND_HI) && (val <= MAX_BLEND_HI))
+		return 1;
+	else
+		return 0;
+}
+
 #endif /* __RADIO_HCI_CORE_H */
