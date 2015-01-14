@@ -435,6 +435,8 @@ struct perf_event_mmap_page {
 	 */
 	__u64   data_head;		/* head in the data section */
 	__u64	data_tail;		/* user-space written tail */
+	__u64   data_offset;            /* where the buffer starts */
+	__u64   data_size;              /* data buffer size */
 
 	/*
 	 * AUX area is defined by aux_{offset,size} fields that should be set
