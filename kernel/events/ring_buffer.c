@@ -254,7 +254,7 @@ ring_buffer_init(struct ring_buffer *rb, long watermark, int flags)
 }
 
 int rb_alloc_aux(struct ring_buffer *rb, struct perf_event *event,
-		 pgoff_t pgoff, int nr_pages, int flags)
+		 pgoff_t pgoff, int nr_pages, long watermark, int flags)
 {
 	bool overwrite = !(flags & RING_BUFFER_WRITABLE);
 	int node = (event->cpu == -1) ? -1 : cpu_to_node(event->cpu);
@@ -293,6 +293,10 @@ int rb_alloc_aux(struct ring_buffer *rb, struct perf_event *event,
 	 * reference them safely.
 	 */
 	atomic_set(&rb->aux_refcount, 1);
+	rb->aux_watermark = watermark;
+
+	if (!rb->aux_watermark && !rb->aux_overwrite)
+		rb->aux_watermark = nr_pages << (PAGE_SHIFT - 1);
 
 out:
 	if (!ret)

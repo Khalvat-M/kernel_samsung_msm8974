@@ -194,6 +194,7 @@ enum perf_event_read_format {
 #define PERF_ATTR_SIZE_VER0	64	/* sizeof first published struct */
 #define PERF_ATTR_SIZE_VER1	72	/* add: config2 */
 #define PERF_ATTR_SIZE_VER2	80	/* add: branch_sample_type */
+#define PERF_ATTR_SIZE_VER5    112     /* add: aux_watermark */
 
 /*
  * Hardware event_id to monitor via a performance monitoring event:
@@ -273,6 +274,12 @@ struct perf_event_attr {
 		__u64		config2; /* extension of config1 */
 	};
 	__u64	branch_sample_type; /* enum branch_sample_type */
+
+	/*
+	 * Wakeup watermark for AUX area
+	 */
+	__u32   aux_watermark;
+	__u32   __reserved_2;   /* align to __u64 */
 };
 
 /*

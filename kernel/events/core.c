@@ -42,6 +42,8 @@
 
 #include <asm/irq_regs.h>
 
+static void ring_buffer_attach(struct perf_event *event,
+			       struct ring_buffer *rb);
 struct remote_function_call {
 	struct task_struct	*p;
 	int			(*func)(void *info);
@@ -4092,7 +4094,8 @@ accounting:
 		perf_event_init_userpage(event);
 		perf_event_update_userpage(event);
 	} else {
-		ret = rb_alloc_aux(rb, event, vma->vm_pgoff, nr_pages, flags);
+		ret = rb_alloc_aux(rb, event, vma->vm_pgoff, nr_pages,
+				event->attr.aux_watermark, flags);
 		if (!ret)
 			rb->aux_mmap_locked = extra;
 	}
