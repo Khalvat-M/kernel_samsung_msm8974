@@ -3789,6 +3789,8 @@ static void perf_mmap_open(struct vm_area_struct *vma)
 
 	atomic_inc(&event->mmap_count);
 	atomic_inc(&event->rb->mmap_count);
+	if (vma->vm_pgoff)
+		atomic_inc(&event->rb->aux_mmap_count);
 }
 
 /*
@@ -3807,6 +3809,20 @@ static void perf_mmap_close(struct vm_area_struct *vma)
 	struct user_struct *mmap_user = rb->mmap_user;
 	int mmap_locked = rb->mmap_locked;
 	unsigned long size = perf_data_size(rb);
+
+	/*
+	 * rb->aux_mmap_count will always drop before rb->mmap_count and
+	 * event->mmap_count, so it is ok to use event->mmap_mutex to
+	 * serialize with perf_mmap here.
+	 */
+	if (rb_has_aux(rb) && vma->vm_pgoff == rb->aux_pgoff &&
+	    atomic_dec_and_mutex_lock(&rb->aux_mmap_count, &event->mmap_mutex)) {
+		atomic_long_sub(rb->aux_nr_pages, &mmap_user->locked_vm);
+		vma->vm_mm->pinned_vm -= rb->aux_mmap_locked;
+
+		rb_free_aux(rb);
+		mutex_unlock(&event->mmap_mutex);
+	}
 
 	atomic_dec(&rb->mmap_count);
 
@@ -3886,7 +3902,7 @@ again:
 
 static const struct vm_operations_struct perf_mmap_vmops = {
 	.open		= perf_mmap_open,
-	.close		= perf_mmap_close,
+	.close		= perf_mmap_close, /* non mergable */
 	.fault		= perf_mmap_fault,
 	.page_mkwrite	= perf_mmap_fault,
 };
@@ -3897,10 +3913,10 @@ static int perf_mmap(struct file *file, struct vm_area_struct *vma)
 	unsigned long user_locked, user_lock_limit;
 	struct user_struct *user = current_user();
 	unsigned long locked, lock_limit;
-	struct ring_buffer *rb;
+	struct ring_buffer *rb = NULL;
 	unsigned long vma_size;
 	unsigned long nr_pages;
-	long user_extra, extra;
+	long user_extra = 0, extra = 0;
 	int ret = 0, flags = 0;
 
 	/*
@@ -3915,7 +3931,66 @@ static int perf_mmap(struct file *file, struct vm_area_struct *vma)
 		return -EINVAL;
 
 	vma_size = vma->vm_end - vma->vm_start;
-	nr_pages = (vma_size / PAGE_SIZE) - 1;
+
+	if (vma->vm_pgoff == 0) {
+		nr_pages = (vma_size / PAGE_SIZE) - 1;
+	} else {
+		/*
+		 * AUX area mapping: if rb->aux_nr_pages != 0, it's already
+		 * mapped, all subsequent mappings should have the same size
+		 * and offset. Must be above the normal perf buffer.
+		 */
+		u64 aux_offset, aux_size;
+
+		if (!event->rb)
+			return -EINVAL;
+
+		nr_pages = vma_size / PAGE_SIZE;
+
+		mutex_lock(&event->mmap_mutex);
+		ret = -EINVAL;
+
+		rb = event->rb;
+		if (!rb)
+			goto aux_unlock;
+
+		aux_offset = ACCESS_ONCE(rb->user_page->aux_offset);
+		aux_size = ACCESS_ONCE(rb->user_page->aux_size);
+
+		if (aux_offset < perf_data_size(rb) + PAGE_SIZE)
+			goto aux_unlock;
+
+		if (aux_offset != vma->vm_pgoff << PAGE_SHIFT)
+			goto aux_unlock;
+
+		/* already mapped with a different offset */
+		if (rb_has_aux(rb) && rb->aux_pgoff != vma->vm_pgoff)
+			goto aux_unlock;
+
+		if (aux_size != vma_size || aux_size != nr_pages * PAGE_SIZE)
+			goto aux_unlock;
+
+		/* already mapped with a different size */
+		if (rb_has_aux(rb) && rb->aux_nr_pages != nr_pages)
+			goto aux_unlock;
+
+		if (!is_power_of_2(nr_pages))
+			goto aux_unlock;
+
+		if (!atomic_inc_not_zero(&rb->mmap_count))
+			goto aux_unlock;
+
+		if (rb_has_aux(rb)) {
+			atomic_inc(&rb->aux_mmap_count);
+			ret = 0;
+			goto unlock;
+		}
+
+		atomic_set(&rb->aux_mmap_count, 1);
+		user_extra = nr_pages;
+
+		goto accounting;
+	}
 
 	/*
 	 * If we have rb pages ensure they're a power-of-two number, so we
@@ -3953,6 +4028,8 @@ again:
 	}
 
 	user_extra = nr_pages + 1;
+
+accounting:
 	user_lock_limit = sysctl_perf_event_mlock >> (PAGE_SHIFT - 10);
 
 	/*
@@ -3962,7 +4039,6 @@ again:
 
 	user_locked = atomic_long_read(&user->locked_vm) + user_extra;
 
-	extra = 0;
 	if (user_locked > user_lock_limit)
 		extra = user_locked - user_lock_limit;
 
@@ -3976,35 +4052,45 @@ again:
 		goto unlock;
 	}
 
-	WARN_ON(event->rb);
+	WARN_ON(!rb && event->rb);
 
 	if (vma->vm_flags & VM_WRITE)
 		flags |= RING_BUFFER_WRITABLE;
 
-	rb = rb_alloc(nr_pages, 
-		event->attr.watermark ? event->attr.wakeup_watermark : 0,
-		event->cpu, flags);
-
 	if (!rb) {
-		ret = -ENOMEM;
-		goto unlock;
+		rb = rb_alloc(nr_pages,
+			      event->attr.watermark ? event->attr.wakeup_watermark : 0,
+			      event->cpu, flags);
+
+		if (!rb) {
+			ret = -ENOMEM;
+			goto unlock;
+		}
+
+		atomic_set(&rb->mmap_count, 1);
+		rb->mmap_user = get_current_user();
+		rb->mmap_locked = extra;
+
+		ring_buffer_attach(event, rb);
+
+		perf_event_init_userpage(event);
+		perf_event_update_userpage(event);
+	} else {
+		ret = rb_alloc_aux(rb, event, vma->vm_pgoff, nr_pages, flags);
+		if (!ret)
+			rb->aux_mmap_locked = extra;
 	}
 
-	atomic_set(&rb->mmap_count, 1);
-	rb->mmap_locked = extra;
-	rb->mmap_user = get_current_user();
-
-	atomic_long_add(user_extra, &user->locked_vm);
-	vma->vm_mm->pinned_vm += extra;
-
-	ring_buffer_attach(event, rb);
-	rcu_assign_pointer(event->rb, rb);
-
-	perf_event_update_userpage(event);
-
 unlock:
-	if (!ret)
+	if (!ret) {
+		atomic_long_add(user_extra, &user->locked_vm);
+		vma->vm_mm->pinned_vm += extra;
+
 		atomic_inc(&event->mmap_count);
+	} else if (rb) {
+		atomic_dec(&rb->mmap_count);
+	}
+aux_unlock:
 	mutex_unlock(&event->mmap_mutex);
 
 	/*
@@ -6517,6 +6603,13 @@ perf_event_set_output(struct perf_event *event, struct perf_event *output_event)
 	 * If its not a per-cpu rb, it must be the same task.
 	 */
 	if (output_event->cpu == -1 && output_event->ctx != event->ctx)
+		goto out;
+
+	/*
+	 * If both events generate aux data, they must be on the same PMU
+	 */
+	if (has_aux(event) && has_aux(output_event) &&
+	    event->pmu != output_event->pmu)
 		goto out;
 
 set:
