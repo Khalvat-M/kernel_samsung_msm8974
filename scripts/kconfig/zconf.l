@@ -142,7 +142,12 @@ n	[A-Za-z0-9_]
 	}
 	#.*	/* comment */
 	\\\n	current_file->lineno++;
-	.
+	[[:blank:]]+
+	.	{
+		fprintf(stderr,
+		        "%s:%d:warning: ignoring unsupported character '%c'\n",
+		        zconf_curname(), zconf_lineno(), *yytext);
+	}
 	<<EOF>> {
 		BEGIN(INITIAL);
 	}
