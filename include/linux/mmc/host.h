@@ -433,6 +433,7 @@ struct mmc_host {
 	} clk_scaling;
 	enum dev_state dev_status;
 	unsigned long		private[0] ____cacheline_aligned;
+	bool			wakeup_on_idle;
 };
 
 extern struct mmc_host *mmc_alloc_host(int extra, struct device *);
