@@ -1724,15 +1724,28 @@ void arch_perf_update_userpage(struct perf_event_mmap_page *userpg, u64 now)
 	if (!boot_cpu_has(X86_FEATURE_NONSTOP_TSC))
 		return;
 
+	/*
+	 * Internal timekeeping for enabled/running/stopped times
+	 * is always in the local_clock domain.
+	 */
+
 	userpg->cap_user_time = 1;
 	userpg->time_mult = this_cpu_read(cyc2ns);
 	userpg->time_shift = CYC2NS_SCALE_FACTOR;
-	userpg->cap_user_time_zero = 1;
 	userpg->time_offset = this_cpu_read(cyc2ns_offset) - now;
 
 	if (sched_clock_stable && !check_tsc_disabled()) {
 		userpg->cap_usr_time_zero = 1;
 		userpg->time_zero = this_cpu_read(cyc2ns_offset);
+	}
+
+	/*
+	 * cap_user_time_zero doesn't make sense when we're using a different
+	 * time base for the records.
+	 */
+	if (event->clock == &local_clock) {
+		userpg->cap_user_time_zero = 1;
+		userpg->time_zero = data->cyc2ns_offset;
 	}
 }
 
