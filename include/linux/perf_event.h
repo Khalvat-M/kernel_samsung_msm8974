@@ -260,7 +260,8 @@ struct perf_event_attr {
 				exclude_callchain_user   : 1, /* exclude user callchains */
 				mmap2          :  1, /* include mmap with inode data */
 				comm_exec      :  1, /* flag comm events that are due to an exec */
-				__reserved_1   : 38;
+				use_clockid    :  1, /* use @clockid for time fields */
+				__reserved_1   : 37;
 
 	union {
 		__u32		wakeup_events;	  /* wakeup every n events */
@@ -278,11 +279,11 @@ struct perf_event_attr {
 	};
 	__u64	branch_sample_type; /* enum branch_sample_type */
 
+	__s32   clockid;
 	/*
 	 * Wakeup watermark for AUX area
 	 */
 	__u32   aux_watermark;
-	__u32   __reserved_2;   /* align to __u64 */
 };
 
 /*
@@ -789,6 +790,7 @@ struct perf_event;
  * Common implementation detail of pmu::{start,commit,cancel}_txn
  */
 #define PERF_EVENT_TXN 0x1
+#define PERF_PMU_CAP_NO_NMI			0x02
 
 /**
  * struct pmu - generic performance monitoring unit
@@ -1065,6 +1067,7 @@ struct perf_event {
 	struct pid_namespace		*ns;
 	u64				id;
 
+	u64				(*clock)(void);
 	perf_overflow_handler_t		overflow_handler;
 	void				*overflow_handler_context;
 
