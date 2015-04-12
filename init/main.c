@@ -454,6 +454,7 @@ static noinline void __init_refok rest_init(void)
 	rkp_init();
 #endif
 	rcu_scheduler_starting();
+	smpboot_thread_init();
 	/*
 	 * We need to spawn init first so that it obtains pid 1, however
 	 * the init task will end up wanting to create kthreads, which, if
