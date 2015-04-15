@@ -99,6 +99,7 @@
 #include "f_qc_rndis.c"
 #include "u_ether.c"
 #include "u_qc_ether.c"
+#include "f_hid.c"
 #ifdef CONFIG_TARGET_CORE
 #include "f_tcm.c"
 #endif
@@ -1574,6 +1575,29 @@ static struct android_usb_function audio_function = {
 };
 #endif
 
+static int hid_function_init(struct android_usb_function *f,
+				 struct usb_composite_dev *cdev)
+{
+	return ghid_setup(cdev->gadget, 2);
+}
+
+static void hid_function_cleanup(struct android_usb_function *f)
+{
+	ghid_cleanup();
+}
+
+static int hid_function_bind_config(struct android_usb_function *f,
+					struct usb_configuration *c)
+{
+	return hidg_bind_config(c, NULL, 0);
+}
+
+static struct android_usb_function hid_function = {
+	.name		= "hid",
+	.init		= hid_function_init,
+	.cleanup	= hid_function_cleanup,
+	.bind_config	= hid_function_bind_config,
+};
 
 /* DIAG */
 static char diag_clients[32];	    /*enabled DIAG clients- "diag[,diag_mdm]" */
@@ -2609,6 +2633,7 @@ static struct android_usb_function *supported_functions[] = {
 	&ncm_function,
 	&mass_storage_function,
 	&accessory_function,
+	&hid_function,
 #ifdef CONFIG_USB_ANDROID_SAMSUNG_SIDESYNC
 	&conn_gadget_function,
 #endif
