@@ -110,16 +110,20 @@ struct msm_vidc_extradata_header {
 struct msm_vidc_interlace_payload {
 	unsigned int format;
 };
+
 struct msm_vidc_framerate_payload {
 	unsigned int frame_rate;
 };
+
 struct msm_vidc_ts_payload {
 	unsigned int timestamp_lo;
 	unsigned int timestamp_hi;
 };
+
 struct msm_vidc_concealmb_payload {
 	unsigned int num_mbs;
 };
+
 struct msm_vidc_recoverysei_payload {
 	unsigned int flags;
 };
@@ -148,10 +152,12 @@ struct msm_vidc_panscan_window {
 	unsigned int panscan_window_width;
 	unsigned int panscan_window_height;
 };
+
 struct msm_vidc_panscan_window_payload {
 	unsigned int num_panscan_windows;
 	struct msm_vidc_panscan_window wnd[1];
 };
+
 struct msm_vidc_s3d_frame_packing_payload {
 	unsigned int fpa_id;
 	unsigned int cancel_flag;
@@ -172,9 +178,11 @@ struct msm_vidc_s3d_frame_packing_payload {
 	unsigned int fpa_repetition_period;
 	unsigned int fpa_extension_flag;
 };
+
 struct msm_vidc_frame_qp_payload {
 	unsigned int frame_qp;
 };
+
 struct msm_vidc_frame_bits_info_payload {
 	unsigned int frame_bits;
 	unsigned int header_bits;
@@ -202,6 +210,10 @@ struct msm_vidc_vui_display_info_payload {
 	unsigned int chroma_sample_loc_type_bottom_field;
 };
 
+struct msm_vidc_vqzip_sei_payload {
+	unsigned int size;
+	unsigned int data[1];
+};
 
 enum msm_vidc_extradata_type {
 	EXTRADATA_NONE = 0x00000000,
@@ -218,6 +230,7 @@ enum msm_vidc_extradata_type {
 	EXTRADATA_STREAM_USERDATA = 0x0000000E,
 	EXTRADATA_FRAME_QP = 0x0000000F,
 	EXTRADATA_FRAME_BITS_INFO = 0x00000010,
+	MSM_VIDC_EXTRADATA_VQZIP_SEI = 0x00000011,
 	EXTRADATA_MULTISLICE_INFO = 0x7F100000,
 	EXTRADATA_NUM_CONCEALED_MB = 0x7F100001,
 	EXTRADATA_INDEX = 0x7F100002,
