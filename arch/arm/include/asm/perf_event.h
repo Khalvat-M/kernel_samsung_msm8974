@@ -35,4 +35,11 @@ enum arm_perf_pmu_ids {
 extern enum arm_perf_pmu_ids
 armpmu_get_pmu_id(void);
 
+#define perf_arch_fetch_caller_regs(regs, __ip) { \
+	(regs)->ARM_pc = (__ip); \
+	(regs)->ARM_fp = (unsigned long) __builtin_frame_address(0); \
+	(regs)->ARM_sp = current_stack_pointer; \
+	(regs)->ARM_cpsr = SVC_MODE; \
+}
+
 #endif /* __ARM_PERF_EVENT_H__ */
