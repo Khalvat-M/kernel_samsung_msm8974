@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -93,6 +93,7 @@ static void mdp4_wfd_queue_wakeup(struct msm_fb_data_type *mfd,
 		struct msmfb_writeback_data_list *node);
 static void mdp4_wfd_dequeue_update(struct msm_fb_data_type *mfd,
 		struct msmfb_writeback_data_list **wfdnode);
+static int is_wb_operation_allowed(struct msm_fb_data_type *mfd);
 
 int mdp4_overlay_writeback_on(struct platform_device *pdev)
 {
@@ -335,6 +336,12 @@ int mdp4_wfd_pipe_commit(struct msm_fb_data_type *mfd,
 	unsigned long flags;
 	int cnt = 0;
 	struct msmfb_writeback_data_list *node = NULL;
+
+	rc = is_wb_operation_allowed(mfd);
+	if (rc) {
+		pr_debug("%s: Unable to commit, error = %d", __func__, rc);
+		return rc;
+	}
 
 	vctrl = &vsync_ctrl_db[cndx];
 
