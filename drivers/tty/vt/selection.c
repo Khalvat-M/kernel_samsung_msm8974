@@ -378,6 +378,7 @@ int paste_selection(struct tty_struct *tty)
 			mutex_lock(&sel_lock);
 			continue;
 		}
+		__set_current_state(TASK_RUNNING);
 		count = sel_buffer_lth - pasted;
 		count = min(count, tty->receive_room);
 		tty->ldisc->ops->receive_buf(tty, sel_buffer + pasted,
