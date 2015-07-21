@@ -261,7 +261,9 @@ struct perf_event_attr {
 				mmap2          :  1, /* include mmap with inode data */
 				comm_exec      :  1, /* flag comm events that are due to an exec */
 				use_clockid    :  1, /* use @clockid for time fields */
-				__reserved_1   : 37;
+				context_switch :  1, /* context switch data */
+				__reserved_1   : 36;
+
 
 	union {
 		__u32		wakeup_events;	  /* wakeup every n events */
@@ -473,6 +475,7 @@ struct perf_event_mmap_page {
  */
 #define PERF_RECORD_MISC_MMAP_DATA             (1 << 13)
 #define PERF_RECORD_MISC_COMM_EXEC             (1 << 13)
+#define PERF_RECORD_MISC_SWITCH_OUT            (1 << 13)
 
 /*
  * Indicates that the content of PERF_SAMPLE_IP points to
@@ -614,6 +617,34 @@ enum perf_event_type {
 	 * };
 	 */
 	PERF_RECORD_SAMPLE			= 9,
+
+	PERF_RECORD_LOST_SAMPLES                = 13,
+
+	/*
+	 * Records a context switch in or out (flagged by
+	 * PERF_RECORD_MISC_SWITCH_OUT). See also
+	 * PERF_RECORD_SWITCH_CPU_WIDE.
+	 *
+	 * struct {
+	 *      struct perf_event_header        header;
+	 *      struct sample_id                sample_id;
+	 * };
+	 */
+	PERF_RECORD_SWITCH                      = 14,
+
+	/*
+	 * CPU-wide version of PERF_RECORD_SWITCH with next_prev_pid and
+	 * next_prev_tid that are the next (switching out) or previous
+	 * (switching in) pid/tid.
+	 *
+	 * struct {
+	 *      struct perf_event_header        header;
+	 *      u32                             next_prev_pid;
+	 *      u32                             next_prev_tid;
+	 *      struct sample_id                sample_id;
+	 * };
+	 */
+	PERF_RECORD_SWITCH_CPU_WIDE             = 15,
 
 	PERF_RECORD_MAX,			/* non-ABI */
 };
