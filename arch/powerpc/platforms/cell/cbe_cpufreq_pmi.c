@@ -97,7 +97,7 @@ static int pmi_notifier(struct notifier_block *nb,
 	struct cpufreq_frequency_table *cbe_freqs;
 	u8 node;
 
-	/* Should this really be called for CPUFREQ_ADJUST, CPUFREQ_INCOMPATIBLE
+	/* Should this really be called for CPUFREQ_ADJUST
 	 * and CPUFREQ_NOTIFY policy events?)
 	 */
 	if (event == CPUFREQ_START)
