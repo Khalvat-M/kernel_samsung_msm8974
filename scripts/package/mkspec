@@ -112,7 +112,6 @@ echo 'rm -rf $RPM_BUILD_ROOT'
 echo ""
 echo "%files"
 echo '%defattr (-, root, root)'
-echo "%dir /lib/modules"
 echo "/lib/modules/$KERNELRELEASE"
 echo "/lib/firmware"
 echo "/boot/*"
