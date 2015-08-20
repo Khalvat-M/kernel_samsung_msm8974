@@ -220,20 +220,6 @@ struct qseecom_dev_handle {
 	enum qseecom_bandwidth_request_mode mode;
 };
 
-enum qseecom_set_clear_key_flag {
-	QSEECOM_CLEAR_CE_KEY_CMD = 0,
-	QSEECOM_SET_CE_KEY_CMD,
-};
-
-struct qseecom_set_key_parameter {
-	uint32_t ce_hw;
-	uint32_t pipe;
-	uint32_t flags;
-	uint8_t key_id[QSEECOM_KEY_ID_SIZE];
-	unsigned char hash32[QSEECOM_HASH_SIZE];
-	enum qseecom_set_clear_key_flag set_clear_key_flag;
-};
-
 struct qseecom_sg_entry {
 	uint32_t phys_addr;
 	uint32_t len;
@@ -1139,7 +1125,7 @@ static int qseecom_unload_app(struct qseecom_dev_handle *data,
 
 	if (!memcmp(data->client.app_name, "keymaste", strlen("keymaste"))) {
 		pr_debug("Do not unload keymaster app from tz\n");
-		goto unload_exit;
+		goto free_app_memory;
 	}
 
 	if (data->client.app_id > 0) {
@@ -1190,7 +1176,7 @@ static int qseecom_unload_app(struct qseecom_dev_handle *data,
 			pr_err("scm_call to unload app (id = %d) failed\n",
 								req.app_id);
 			ret = -EFAULT;
-			goto unload_exit;
+			goto free_app_memory;
 		} else {
 			pr_warn("App id %d now unloaded\n", req.app_id);
 		}
@@ -1198,7 +1184,7 @@ static int qseecom_unload_app(struct qseecom_dev_handle *data,
 			pr_err("app (%d) unload_failed!!\n",
 					data->client.app_id);
 			ret = -EFAULT;
-			goto unload_exit;
+			goto free_app_memory;
 		}
 		if (resp.result == QSEOS_RESULT_SUCCESS)
 			pr_debug("App (%d) is unloaded!!\n",
@@ -1209,7 +1195,7 @@ static int qseecom_unload_app(struct qseecom_dev_handle *data,
 			if (ret) {
 				pr_err("process_incomplete_cmd fail err: %d\n",
 									ret);
-				goto unload_exit;
+				goto free_app_memory;
 			}
 		}
 	}
@@ -1236,7 +1222,7 @@ static int qseecom_unload_app(struct qseecom_dev_handle *data,
 		spin_unlock_irqrestore(&qseecom.registered_app_list_lock,
 								flags1);
 	}
-unload_exit:
+free_app_memory:
 	qseecom_unmap_ion_allocated_memory(data);
 	data->released = true;
 	return ret;
@@ -1507,10 +1493,9 @@ static int __validate_send_cmd_inputs(struct qseecom_dev_handle *data,
 		pr_err("cmd buffer address not within shared bufffer\n");
 		return -EINVAL;
 	}
-
-	if (((uintptr_t)req->resp_buf < data->client.user_virt_sb_base)  ||
-		((uintptr_t)req->resp_buf >= (data->client.user_virt_sb_base +
-					data->client.sb_length))) {
+	if (((uint32_t)req->resp_buf < data->client.user_virt_sb_base)  ||
+		((uint32_t)req->resp_buf >= (data->client.user_virt_sb_base +
+					data->client.sb_length))){
 		pr_err("response buffer address not within shared bufffer\n");
 		return -EINVAL;
 	}
@@ -3494,11 +3479,9 @@ static int __qseecom_delete_saved_key(struct qseecom_dev_handle *data,
 
 	if (usage < QSEOS_KM_USAGE_DISK_ENCRYPTION ||
 		usage >= QSEOS_KM_USAGE_MAX) {
-			pr_err("Error:: unsupported usage %d\n", usage);
-			return -EFAULT;
+		pr_err("Error:: unsupported usage %d\n", usage);
+		return -EFAULT;
 	}
-
-
 	__qseecom_enable_clk(CLK_QSEE);
 
 	ret = scm_call(SCM_SVC_TZSCHEDULER, 1,
@@ -3555,8 +3538,8 @@ static int __qseecom_set_clear_ce_key(struct qseecom_dev_handle *data,
 
 	if (usage < QSEOS_KM_USAGE_DISK_ENCRYPTION ||
 		usage >= QSEOS_KM_USAGE_MAX) {
-			pr_err("Error:: unsupported usage %d\n", usage);
-			return -EFAULT;
+		pr_err("Error:: unsupported usage %d\n", usage);
+		return -EFAULT;
 	}
 
 	__qseecom_enable_clk(CLK_QSEE);
@@ -3876,7 +3859,6 @@ static int qseecom_update_key_user_info(struct qseecom_dev_handle *data,
 	return ret;
 
 }
-
 static int qseecom_is_es_activated(void __user *argp)
 {
 	struct qseecom_is_es_activated_req req;
@@ -3995,7 +3977,6 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 		break;
 	}
 	case QSEECOM_IOCTL_SEND_CMD_REQ: {
-		pr_debug("qseecom.current_mode %d\n", qseecom.current_mode);
 		if ((data->client.app_id == 0) ||
 			(data->type != QSEECOM_CLIENT_APP)) {
 			pr_err("send cmd req: invalid handle (%d) app_id(%d)\n",
@@ -4056,7 +4037,6 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 		break;
 	}
 	case QSEECOM_IOCTL_SEND_MODFD_CMD_REQ: {
-		pr_debug("qseecom.current_mode %d\n", qseecom.current_mode);
 		if ((data->client.app_id == 0) ||
 			(data->type != QSEECOM_CLIENT_APP)) {
 			pr_err("send mdfd cmd: invalid handle (%d) appid(%d)\n",
