@@ -3986,7 +3986,7 @@ static struct regulator_ops qpnp_chg_batfet_vreg_ops = {
 	.is_enabled		= qpnp_chg_regulator_batfet_is_enabled,
 };
 
-#define CONSECUTIVE_COUNT	3
+#define CONSECUTIVE_COUNT	10
 #define VBATDET_MAX_ERR_MV	50
 static void
 qpnp_eoc_work(struct work_struct *work)
