@@ -254,4 +254,5 @@ int msm_fb_check_frame_rate(struct msm_fb_data_type *mfd,
 int load_565rle_image(char *filename, bool bf_supported);
 #endif
 
+void mdp_restore_rgb(void);
 #endif /* MSM_FB_H */
