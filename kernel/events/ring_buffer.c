@@ -311,6 +311,14 @@ static void __rb_free_aux(struct ring_buffer *rb)
 {
 	int pg;
 
+	/*
+	 * Should never happen, the last reference should be dropped from
+	 * perf_mmap_close() path, which first stops aux transactions (which
+	 * in turn are the atomic holders of aux_refcount) and then does the
+	 * last rb_free_aux().
+	 */
+	WARN_ON_ONCE(in_atomic());
+
 	if (rb->aux_priv) {
 		rb->free_aux(rb->aux_priv);
 		rb->free_aux = NULL;
