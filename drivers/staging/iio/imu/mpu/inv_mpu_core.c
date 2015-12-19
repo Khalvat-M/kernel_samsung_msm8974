@@ -53,9 +53,7 @@
 
 s64 get_time_ns(void)
 {
-	struct timespec ts;
-	ktime_get_ts(&ts);
-	return timespec_to_ns(&ts);
+	return ktime_to_ns(ktime_get_boottime());
 }
 
 /* This is for compatibility for power state. Should remove once HAL
