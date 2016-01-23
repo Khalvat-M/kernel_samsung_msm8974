@@ -134,6 +134,9 @@ int crypto_probing_notify(unsigned long val, void *v);
 
 unsigned int crypto_alg_extsize(struct crypto_alg *alg);
 
+int crypto_type_has_alg(const char *name, const struct crypto_type *frontend,
+			u32 type, u32 mask);
+
 static inline void crypto_alg_put(struct crypto_alg *alg)
 {
 	if (atomic_dec_and_test(&alg->cra_refcnt) && alg->cra_destroy)
