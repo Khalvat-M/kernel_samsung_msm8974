@@ -190,7 +190,7 @@
 	} while (0)
 
 /* Mark a function definition as prohibited from being cloned. */
-#define __noclone	__attribute__((__noclone__))
+#define __noclone	__attribute__((__noclone__, __optimize__("no-tracer")))
 
 #endif /* GCC_VERSION >= 40500 */
 
