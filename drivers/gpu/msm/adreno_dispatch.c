@@ -1653,6 +1653,8 @@ static void adreno_dispatcher_work(struct kthread_work *work)
 		break;
 	}
 
+	kgsl_process_event_groups(device);
+
 	/*
 	 * Call the dispatcher fault routine here so the fault bit gets cleared
 	 * when no commands are in dispatcher but fault bit is set. This can
@@ -1660,14 +1662,6 @@ static void adreno_dispatcher_work(struct kthread_work *work)
 	 */
 	if (!fault_handled && dispatcher_do_fault(device))
 		goto done;
-
-	/*
-	 * If inflight went to 0, queue back up the event processor to catch
-	 * stragglers
-	 */
-	if (dispatcher->inflight == 0 && count) {
-		queue_work(device->work_queue, &device->event_work);
-	}
 
 	/* Dispatch new commands if we have the room */
 	if (dispatcher->inflight < _dispatcher_inflight)
