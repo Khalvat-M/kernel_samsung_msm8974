@@ -895,9 +895,7 @@ int msm_vidc_qbuf(void *instance, struct v4l2_buffer *b)
 		if (!inst->map_output_buffer)
 			continue;
 		if (EXTRADATA_IDX(b->length) &&
-			(i == EXTRADATA_IDX(b->length)) &&
-			!b->m.planes[i].length) {
-			b->m.planes[i].m.userptr = 0;
+			i == EXTRADATA_IDX(b->length)) {
 			continue;
 		}
 
