@@ -144,7 +144,7 @@ void mdp4_overlay_iommu_unmap_freelist(int mixer)
 		ihdl = flist->ihdl[i];
 		if (ihdl == NULL)
 			continue;
-		pr_debug("%s: mixer=%d i=%d ihdl=0x%p\n", __func__,
+		pr_debug("%s: mixer=%d i=%d ihdl=0x%pK\n", __func__,
 					mixer, i, ihdl);
 		ion_unmap_iommu(display_iclient, ihdl, DISPLAY_READ_DOMAIN,
 							GEN_POOL);
@@ -173,7 +173,7 @@ void mdp4_overlay_iommu_2freelist(int mixer, struct ion_handle *ihdl)
 		return;
 	}
 
-	pr_debug("%s: add mixer=%d fndx=%d ihdl=0x%p\n", __func__,
+	pr_debug("%s: add mixer=%d fndx=%d ihdl=0x%pK\n", __func__,
 				mixer, flist->fndx, ihdl);
 
 	flist->total++;
@@ -244,8 +244,7 @@ int mdp4_overlay_iommu_map_buf(int mem_id,
 		pr_err("ion_import_dma_buf() failed\n");
 		return PTR_ERR(*srcp_ihdl);
 	}
-	pr_debug("%s(): ion_hdl %p, ion_buf %d\n", __func__, *srcp_ihdl,
-		mem_id);
+	pr_debug("%s(): ion_hdl %pK, ion_buf %d\n", __func__, *srcp_ihdl, mem_id);
 	pr_debug("mixer %u, pipe %u, plane %u\n", pipe->mixer_num,
 		pipe->pipe_ndx, plane);
 	if (ion_map_iommu(display_iclient, *srcp_ihdl,
@@ -269,7 +268,7 @@ int mdp4_overlay_iommu_map_buf(int mem_id,
 	iom->ihdl[plane] = *srcp_ihdl;
 	mdp4_stat.iommu_map++;
 
-	pr_debug("%s: ndx=%d plane=%d prev=0x%p cur=0x%p start=0x%lx len=%lx\n",
+	pr_debug("%s: ndx=%d plane=%d prev=0x%pK cur=0x%pK start=0x%lx len=%lx\n",
 		 __func__, pipe->pipe_ndx, plane, iom->prev_ihdl[plane],
 			iom->ihdl[plane], *start, *len);
 	mutex_unlock(&iommu_mutex);
@@ -291,7 +290,7 @@ void mdp4_iommu_unmap(struct mdp4_overlay_pipe *pipe)
 		for (i = 0; i < MDP4_MAX_PLANE; i++) {
 			if (iom_pipe_info->prev_ihdl[i]) {
 				pr_debug("%s(): mixer %u, pipe %u, plane %u, "
-					"prev_ihdl %p\n", __func__,
+					"prev_ihdl %pK\n", __func__,
 					pipe->mixer_num, j + 1, i,
 					iom_pipe_info->prev_ihdl[i]);
 				ion_unmap_iommu(display_iclient,
@@ -305,7 +304,7 @@ void mdp4_iommu_unmap(struct mdp4_overlay_pipe *pipe)
 			if (iom_pipe_info->mark_unmap) {
 				if (iom_pipe_info->ihdl[i]) {
 					pr_debug("%s(): MARK, mixer %u, pipe %u, plane %u, "
-						"ihdl %p\n", __func__,
+						"ihdl %pK\n", __func__,
 						pipe->mixer_num, j + 1, i,
 						iom_pipe_info->ihdl[i]);
 					ion_unmap_iommu(display_iclient,
@@ -2523,7 +2522,7 @@ static int mdp4_overlay_req2pipe(struct mdp_overlay *req, int mixer,
 
 	if (!display_iclient && !IS_ERR_OR_NULL(mfd->iclient)) {
 		display_iclient = mfd->iclient;
-		pr_debug("%s(): display_iclient %p\n", __func__,
+		pr_debug("%s(): display_iclient %pK\n", __func__,
 			display_iclient);
 	}
 
