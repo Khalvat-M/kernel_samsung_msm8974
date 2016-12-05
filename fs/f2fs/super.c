@@ -1441,6 +1441,7 @@ int sanity_check_ckpt(struct f2fs_sb_info *sbi)
 	struct f2fs_checkpoint *ckpt = F2FS_CKPT(sbi);
 	unsigned int main_segs, blocks_per_seg;
 	unsigned int cp_pack_start_sum, cp_payload;
+	unsigned int ovp_segments, reserved_segments;
 	int i;
 
 	total = le32_to_cpu(raw_super->segment_count);
@@ -1452,6 +1453,16 @@ int sanity_check_ckpt(struct f2fs_sb_info *sbi)
 
 	if (unlikely(fsmeta >= total))
 		return 1;
+
+	ovp_segments = le32_to_cpu(ckpt->overprov_segment_count);
+	reserved_segments = le32_to_cpu(ckpt->rsvd_segment_count);
+
+	if (unlikely(fsmeta < F2FS_MIN_SEGMENTS ||
+			ovp_segments == 0 || reserved_segments == 0)) {
+		f2fs_msg(sbi->sb, KERN_ERR,
+			"Wrong layout: check mkfs.f2fs version");
+		return 1;
+	}
 
 	main_segs = le32_to_cpu(sbi->raw_super->segment_count_main);
 	blocks_per_seg = sbi->blocks_per_seg;
