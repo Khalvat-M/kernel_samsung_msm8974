@@ -100,9 +100,6 @@ static int pmi_notifier(struct notifier_block *nb,
 	/* Should this really be called for CPUFREQ_ADJUST
 	 * and CPUFREQ_NOTIFY policy events?)
 	 */
-	if (event == CPUFREQ_START)
-		return 0;
-
 	cbe_freqs = cpufreq_frequency_get_table(policy->cpu);
 	node = cbe_cpu_to_node(policy->cpu);
 
