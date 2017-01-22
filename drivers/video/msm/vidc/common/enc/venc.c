@@ -165,11 +165,11 @@ static void vid_enc_input_frame_done(struct video_client_ctx *client_ctx,
 
 	switch (event) {
 	case VCD_EVT_RESP_INPUT_DONE:
-	   DBG("Send INPUT_DON message to client = %p\n",
+	   DBG("Send INPUT_DON message to client = %pK\n",
 			client_ctx);
 	   break;
 	case VCD_EVT_RESP_INPUT_FLUSHED:
-		DBG("Send INPUT_FLUSHED message to client = %p\n",
+		DBG("Send INPUT_FLUSHED message to client = %pK\n",
 			client_ctx);
 	   break;
 	default:
@@ -220,11 +220,11 @@ static void vid_enc_output_frame_done(struct video_client_ctx *client_ctx,
 
 	switch (event) {
 	case VCD_EVT_RESP_OUTPUT_DONE:
-	   DBG("Send OUTPUT_DON message to client = %p\n",
+	   DBG("Send OUTPUT_DON message to client = %pK\n",
 			client_ctx);
 	   break;
 	case VCD_EVT_RESP_OUTPUT_FLUSHED:
-	   DBG("Send OUTPUT_FLUSHED message to client = %p\n",
+	   DBG("Send OUTPUT_FLUSHED message to client = %pK\n",
 		   client_ctx);
 	   break;
 	default:
@@ -549,7 +549,7 @@ static int vid_enc_open_client(struct video_client_ctx **vid_clnt_ctx,
 		goto client_failure;
 	}
 
-	DBG(" Virtual Address of ioremap is %p\n", vid_enc_device_p->virt_base);
+	DBG(" Virtual Address of ioremap is %pK\n", vid_enc_device_p->virt_base);
 	if (!vid_enc_device_p->num_clients) {
 		if (!vidc_load_firmware()) {
 			rc = -ENODEV;
