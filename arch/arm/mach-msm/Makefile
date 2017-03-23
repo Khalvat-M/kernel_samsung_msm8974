@@ -385,7 +385,6 @@ obj-$(CONFIG_MSM_RPM_LOG) += rpm_log.o
 obj-$(CONFIG_MSM_TZ_LOG) += tz_log.o
 obj-$(CONFIG_MSM_XO) += msm_xo.o
 obj-$(CONFIG_MSM_BUS_SCALING) += msm_bus/
-obj-$(CONFIG_MSM_BUSPM_DEV) += msm-buspm-dev.o
 obj-$(CONFIG_USB_SWITCH_RT8973) += sec-switch.o
 obj-$(CONFIG_REGULATOR_MAX77888) += sec-regulator-max77888.o
 obj-$(CONFIG_REGULATOR_MAX77803) += sec-regulator-max77803.o
