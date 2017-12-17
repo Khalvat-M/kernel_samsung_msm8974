@@ -60,16 +60,9 @@ struct evdev_client {
 static struct evdev *evdev_table[EVDEV_MINORS];
 static DEFINE_MUTEX(evdev_table_mutex);
 
-static void evdev_pass_event(struct evdev_client *client,
-			     struct input_event *event,
-			     ktime_t mono, ktime_t real)
+static __always_inline void
+__pass_event(struct evdev_client *client, const struct input_event *event)
 {
-	event->time = ktime_to_timeval(client->clkid == CLOCK_MONOTONIC ?
-					mono : real);
-
-	/* Interrupts are disabled, just acquire the lock. */
-	spin_lock(&client->buffer_lock);
-
 	client->buffer[client->head++] = *event;
 	client->head &= client->bufsize - 1;
 
@@ -96,58 +89,94 @@ static void evdev_pass_event(struct evdev_client *client,
 			wake_lock(&client->wake_lock);
 		kill_fasync(&client->fasync, SIGIO, POLL_IN);
 	}
+}
 
+static inline void
+evdev_pass_values(struct evdev_client *client, const struct input_value *vals,
+		  unsigned int count, ktime_t mono, ktime_t real)
+{
+	struct input_event event = {
+		.time = ktime_to_timeval(client->clkid == CLOCK_MONOTONIC ?
+					 mono : real),
+	};
+	struct evdev *evdev = client->evdev;
+	const struct input_value *v;
+	bool wakeup = false;
+
+	/* Interrupts are disabled, just acquire the lock */
+	spin_lock(&client->buffer_lock);
+	for (v = vals; v != vals + count; v++) {
+		/* Skip time calibration packets */
+		if (v->type == EV_SYN &&
+		   (v->code == SYN_TIME_SEC || v->code == SYN_TIME_NSEC))
+			continue;
+
+		event.type = v->type;
+		event.code = v->code;
+		event.value = v->value;
+
+		__pass_event(client, &event);
+		if (v->type == EV_SYN && v->code == SYN_REPORT)
+			wakeup = true;
+	}
 	spin_unlock(&client->buffer_lock);
+
+	if (wakeup) {
+		evdev->hw_ts_sec = -1;
+		evdev->hw_ts_nsec = -1;
+		wake_up_interruptible(&evdev->wait);
+	}
+}
+
+static inline void
+evdev_parse_hwcalib(struct evdev *evdev, const struct input_value *vals)
+{
+	if (vals[0].type == EV_SYN && vals[0].code == SYN_TIME_SEC)
+		evdev->hw_ts_sec = vals[0].value;
+	if (vals[1].type == EV_SYN && vals[1].code == SYN_TIME_NSEC)
+		evdev->hw_ts_nsec = vals[1].value;
+}
+
+/*
+ * Pass incoming events to all connected clients.
+ */
+static void evdev_events(struct input_handle *handle,
+			 const struct input_value *vals,
+			 unsigned int count)
+{
+	struct evdev *evdev = handle->private;
+	struct evdev_client *client;
+	ktime_t time_mono, time_real;
+
+	/* Calibration data is expected to be within first 2 packets */
+	if (likely(count > 2))
+		evdev_parse_hwcalib(evdev, vals);
+
+	time_mono = (evdev->hw_ts_sec != -1 && evdev->hw_ts_nsec != -1) ?
+		ktime_set(evdev->hw_ts_sec, evdev->hw_ts_nsec) : ktime_get();
+	time_real = ktime_sub(time_mono, ktime_get_monotonic_offset());
+
+	rcu_read_lock();
+	client = rcu_dereference(evdev->grab);
+
+	if (client)
+		evdev_pass_values(client, vals, count, time_mono, time_real);
+	else
+		list_for_each_entry_rcu(client, &evdev->client_list, node)
+			evdev_pass_values(client, vals, count,
+					  time_mono, time_real);
+	rcu_read_unlock();
 }
 
 /*
  * Pass incoming event to all connected clients.
  */
 static void evdev_event(struct input_handle *handle,
-			unsigned int type, unsigned int code, int value)
+			u32 type, u32 code, int value)
 {
-	struct evdev *evdev = handle->private;
-	struct evdev_client *client;
-	struct input_event event;
-	ktime_t time_mono, time_real;
+	struct input_value vals[] = { { type, code, value } };
 
-	if (type == EV_SYN && code == SYN_TIME_SEC) {
-		evdev->hw_ts_sec = value;
-		return;
-	}
-	if (type == EV_SYN && code == SYN_TIME_NSEC) {
-		evdev->hw_ts_nsec = value;
-		return;
-	}
-
-	if (evdev->hw_ts_sec != -1 && evdev->hw_ts_nsec != -1)
-		time_mono = ktime_set(evdev->hw_ts_sec, evdev->hw_ts_nsec);
-	else
-		time_mono = ktime_get();
-
-	time_real = ktime_sub(time_mono, ktime_get_monotonic_offset());
-
-	event.type = type;
-	event.code = code;
-	event.value = value;
-
-	rcu_read_lock();
-
-	client = rcu_dereference(evdev->grab);
-
-	if (client)
-		evdev_pass_event(client, &event, time_mono, time_real);
-	else
-		list_for_each_entry_rcu(client, &evdev->client_list, node)
-			evdev_pass_event(client, &event, time_mono, time_real);
-
-	rcu_read_unlock();
-
-	if (type == EV_SYN && code == SYN_REPORT) {
-		evdev->hw_ts_sec = -1;
-		evdev->hw_ts_nsec = -1;
-		wake_up_interruptible(&evdev->wait);
-	}
+	evdev_events(handle, vals, 1);
 }
 
 static int evdev_fasync(int fd, struct file *file, int on)
@@ -1136,6 +1165,7 @@ MODULE_DEVICE_TABLE(input, evdev_ids);
 
 static struct input_handler evdev_handler = {
 	.event		= evdev_event,
+	.events		= evdev_events,
 	.connect	= evdev_connect,
 	.disconnect	= evdev_disconnect,
 	.fops		= &evdev_fops,
