@@ -269,13 +269,11 @@ static void *read_file(const char *filename)
 	buf = malloc(st.st_size + 1);
 	if (!buf) {
 		perror("fixdep: malloc");
-		close(fd);
-		return;
+		exit(2);
 	}
 	if (read(fd, buf, st.st_size) != st.st_size) {
 		perror("fixdep: read");
-		close(fd);
-		return;
+		exit(2);
 	}
 	buf[st.st_size] = '\0';
 	close(fd);
