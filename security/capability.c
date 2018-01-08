@@ -400,6 +400,10 @@ static void cap_cred_transfer(struct cred *new, const struct cred *old)
 {
 }
 
+static void cap_cred_getsecid(const struct cred *c, u32 *secid)
+{
+}
+
 static int cap_kernel_act_as(struct cred *new, u32 secid)
 {
 	return 0;
@@ -992,6 +996,7 @@ void __init security_fixup_ops(struct security_operations *ops)
 	set_to_cap_if_null(ops, cred_free);
 	set_to_cap_if_null(ops, cred_prepare);
 	set_to_cap_if_null(ops, cred_transfer);
+	set_to_cap_if_null(ops, cred_getsecid);
 	set_to_cap_if_null(ops, kernel_act_as);
 	set_to_cap_if_null(ops, kernel_create_files_as);
 	set_to_cap_if_null(ops, kernel_module_request);
