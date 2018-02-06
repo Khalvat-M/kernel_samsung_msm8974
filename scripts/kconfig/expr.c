@@ -87,7 +87,7 @@ struct expr *expr_copy(const struct expr *org)
 		e->right.expr = expr_copy(org->right.expr);
 		break;
 	default:
-		printf("can't copy type %d\n", e->type);
+		fprintf(stderr, "can't copy type %d\n", e->type);
 		free(e);
 		e = NULL;
 		break;
@@ -116,7 +116,7 @@ void expr_free(struct expr *e)
 		expr_free(e->right.expr);
 		break;
 	default:
-		printf("how to free type %d?\n", e->type);
+		fprintf(stderr, "how to free type %d?\n", e->type);
 		break;
 	}
 	free(e);
