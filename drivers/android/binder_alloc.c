@@ -1008,6 +1008,7 @@ void binder_alloc_vma_close(struct binder_alloc *alloc)
 enum lru_status binder_alloc_free_page(struct list_head *item,
 				       spinlock_t *lock,
 				       void *cb_arg)
+	__must_hold(lock)
 {
 	struct mm_struct *mm = NULL;
 	struct binder_lru_page *page = container_of(item,
