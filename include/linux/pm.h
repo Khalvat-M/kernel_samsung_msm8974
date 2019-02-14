@@ -509,6 +509,7 @@ struct dev_pm_info {
 	unsigned int		async_suspend:1;
 	bool			is_prepared:1;	/* Owned by the PM core */
 	bool			is_suspended:1;	/* Ditto */
+	bool			no_pm:1;
 	bool			ignore_children:1;
 	bool			early_init:1;	/* Owned by the PM core */
 	spinlock_t		lock;
