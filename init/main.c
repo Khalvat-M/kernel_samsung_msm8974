@@ -656,12 +656,12 @@ asmlinkage void __init start_kernel(void)
 	page_alloc_init();
 
 	printk(KERN_NOTICE "Kernel command line: %s\n", boot_command_line);
+	/* parameters may set static keys */
+	jump_label_init();
 	parse_early_param();
 	parse_args("Booting kernel", static_command_line, __start___param,
 		   __stop___param - __start___param,
 		   -1, -1, &unknown_bootoption);
-
-	jump_label_init();
 
 #ifdef CONFIG_CRYPTO_FIPS_OLD_INTEGRITY_CHECK
 	/* change@ksingh.sra-dallas
