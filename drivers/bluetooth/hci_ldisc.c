@@ -51,7 +51,6 @@
 static bool reset = 0;
 
 static struct hci_uart_proto *hup[HCI_UART_MAX_PROTO];
-static void hci_uart_tty_wakeup_action(unsigned long data);
 
 int hci_uart_register_proto(struct hci_uart_proto *p)
 {
@@ -290,8 +289,6 @@ static int hci_uart_tty_open(struct tty_struct *tty)
 	INIT_WORK(&hu->write_work, hci_uart_write_work);
 
 	spin_lock_init(&hu->rx_lock);
-	tasklet_init(&hu->tty_wakeup_task, hci_uart_tty_wakeup_action,
-			 (unsigned long)hu);
 
 	/* Flush any pending characters in the driver and line discipline. */
 
@@ -325,8 +322,6 @@ static void hci_uart_tty_close(struct tty_struct *tty)
 		if (hdev)
 			hci_uart_close(hdev);
 
-		tasklet_kill(&hu->tty_wakeup_task);
-
 		cancel_work_sync(&hu->write_work);
 
 		if (test_and_clear_bit(HCI_UART_PROTO_SET, &hu->flags)) {
@@ -345,8 +340,6 @@ static void hci_uart_tty_close(struct tty_struct *tty)
  *
  *    Callback for transmit wakeup. Called when low level
  *    device driver can accept more send data.
- *    This callback gets called from the isr context so
- *    schedule the send data operation to tasklet.
  *
  * Arguments:        tty    pointer to associated tty instance data
  * Return Value:    None
@@ -354,25 +347,11 @@ static void hci_uart_tty_close(struct tty_struct *tty)
 static void hci_uart_tty_wakeup(struct tty_struct *tty)
 {
 	struct hci_uart *hu = (void *)tty->disc_data;
-	tasklet_schedule(&hu->tty_wakeup_task);
-}
-
-/* hci_uart_tty_wakeup_action()
- *
- * Scheduled action to transmit data when low level device
- * driver can accept more data.
- */
-static void hci_uart_tty_wakeup_action(unsigned long data)
-{
-	struct hci_uart *hu = (struct hci_uart *)data;
-	struct tty_struct *tty;
 
 	BT_DBG("");
 
 	if (!hu)
 		return;
-
-	tty = hu->tty;
 
 	clear_bit(TTY_DO_WRITE_WAKEUP, &tty->flags);
 
