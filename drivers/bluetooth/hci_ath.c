@@ -332,6 +332,9 @@ static int ath_open(struct hci_uart *hu)
 		return -EIO;
 	}
 
+	if (!hci_uart_has_flow_control(hu))
+		return -EOPNOTSUPP;
+
 	ath = kzalloc(sizeof(*ath), GFP_ATOMIC);
 	if (!ath) {
 		BT_ERR("HCIATH3K Memory not enough to init driver");
