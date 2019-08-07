@@ -1147,13 +1147,14 @@ static int ep_create_wakeup_source(struct epitem *epi)
 	const char *name;
 
 	if (!epi->ep->ws) {
-		epi->ep->ws = wakeup_source_register("eventpoll");
+		epi->ep->ws = wakeup_source_register(NULL, "eventpoll");
 		if (!epi->ep->ws)
 			return -ENOMEM;
 	}
 
 	name = epi->ffd.file->f_path.dentry->d_name.name;
-	epi->ws = wakeup_source_register(name);
+	epi->ws = wakeup_source_register(NULL, name);
+
 	if (!epi->ws)
 		return -ENOMEM;
 

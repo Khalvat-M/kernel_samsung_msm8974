@@ -51,6 +51,10 @@ extern void device_pm_remove(struct device *);
 extern void device_pm_move_before(struct device *, struct device *);
 extern void device_pm_move_after(struct device *, struct device *);
 extern void device_pm_move_last(struct device *);
+/* drivers/base/power/wakeup_stats.c */
+extern int wakeup_source_sysfs_add(struct device *parent,
+				   struct wakeup_source *ws);
+extern void wakeup_source_sysfs_remove(struct wakeup_source *ws);
 
 #else /* !CONFIG_PM_SLEEP */
 
