@@ -1329,6 +1329,9 @@ again:
 
 			hlist_del_init(&session->hlist);
 
+			if (test_and_set_bit(0, &session->dead))
+				goto again;
+
 			/* Since we should hold the sock lock while
 			 * doing any unbinding, we need to release the
 			 * lock we're holding before taking that lock.
@@ -1672,6 +1675,9 @@ EXPORT_SYMBOL_GPL(l2tp_session_free);
  */
 int l2tp_session_delete(struct l2tp_session *session)
 {
+	if (test_and_set_bit(0, &session->dead))
+		return 0;
+
 	l2tp_session_queue_purge(session);
 
 	if (session->session_close != NULL)
