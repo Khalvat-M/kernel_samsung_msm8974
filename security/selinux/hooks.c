@@ -84,6 +84,7 @@
 #include <linux/msg.h>
 #include <linux/shm.h>
 #include <linux/pft.h>
+#include <linux/ratelimit.h>
 
 #include "avc.h"
 #include "objsec.h"
