@@ -543,6 +543,7 @@ struct binder_transaction {
 	binder_uintptr_t security_ctx;
 };
 
+#if 0 // Disable locking helper functions as long as they are not used.
 /**
  * binder_proc_lock() - Acquire outer lock for given binder_proc
  * @proc:         struct binder_proc to acquire
@@ -573,6 +574,7 @@ _binder_proc_unlock(struct binder_proc *proc, int line)
 		     "%s: line=%d\n", __func__, line);
 	spin_unlock(&proc->outer_lock);
 }
+#endif
 
 /**
  * binder_inner_proc_lock() - Acquire inner lock for given binder_proc
@@ -604,6 +606,7 @@ _binder_inner_proc_unlock(struct binder_proc *proc, int line)
 	spin_unlock(&proc->inner_lock);
 }
 
+#if 0 // Disable locking helper functions as long as they are not used.
 /**
  * binder_node_lock() - Acquire spinlock for given binder_node
  * @node:         struct binder_node to acquire
@@ -633,6 +636,7 @@ _binder_node_unlock(struct binder_node *node, int line)
 		     "%s: line=%d\n", __func__, line);
 	spin_unlock(&node->lock);
 }
+#endif
 
 static void
 binder_defer_work(struct binder_proc *proc, enum binder_deferred_state defer);
