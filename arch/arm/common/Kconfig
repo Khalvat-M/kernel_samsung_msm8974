@@ -46,10 +46,6 @@ config SHARP_PARAM
 config SHARP_SCOOP
 	bool
 
-config FIQ_GLUE
-	bool
-	select FIQ
-
 config FIQ_DEBUGGER
 	bool "FIQ Mode Serial Debugger"
 	select FIQ
