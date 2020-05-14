@@ -199,12 +199,24 @@ static int soc_pcm_open(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_pcm_runtime *runtime = substream->runtime;
-	struct snd_soc_platform *platform = rtd->platform;
-	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
-	struct snd_soc_dai *codec_dai = rtd->codec_dai;
-	struct snd_soc_dai_driver *cpu_dai_drv = cpu_dai->driver;
-	struct snd_soc_dai_driver *codec_dai_drv = codec_dai->driver;
+	struct snd_soc_platform *platform = NULL;
+	struct snd_soc_dai *cpu_dai = NULL;
+	struct snd_soc_dai *codec_dai = NULL;
+	struct snd_soc_dai_driver *cpu_dai_drv = NULL;
+	struct snd_soc_dai_driver *codec_dai_drv = NULL;
 	int ret = 0;
+
+	if (!rtd) {
+		printk(KERN_ERR "asoc: incomplete substream %i \"%s\": private_data "
+			"is NULL\n", substream->number, substream->name);
+		return -EINVAL;
+	}
+
+	platform = rtd->platform;
+	cpu_dai = rtd->cpu_dai;
+	codec_dai = rtd->codec_dai;
+	cpu_dai_drv = cpu_dai->driver;
+	codec_dai_drv = codec_dai->driver;
 
 	pm_runtime_get_sync(cpu_dai->dev);
 	pm_runtime_get_sync(codec_dai->dev);
