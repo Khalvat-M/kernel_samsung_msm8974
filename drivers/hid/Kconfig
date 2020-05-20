@@ -537,12 +537,6 @@ config HID_SAMSUNG
 	---help---
 	Support for Samsung InfraRed remote control or keyboards.
 
-config HID_SONY
-	tristate "Sony PS3 controller"
-	depends on USB_HID
-	---help---
-	Support for Sony PS3 controller.
-
 config HID_SPEEDLINK
 	tristate "Speedlink VAD Cezanne mouse support"
 	depends on USB_HID
