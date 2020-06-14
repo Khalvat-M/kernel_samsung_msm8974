@@ -258,6 +258,7 @@ struct perf_event_attr {
 				constraint_duplicate : 1,
 				exclude_callchain_kernel : 1, /* exclude kernel callchains */
 				exclude_callchain_user   : 1, /* exclude user callchains */
+				mmap2          :  1, /* include mmap with inode data *\
 				__reserved_1   : 40;
 
 	union {
