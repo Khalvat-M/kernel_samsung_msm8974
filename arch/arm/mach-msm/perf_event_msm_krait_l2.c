@@ -352,8 +352,6 @@ static irqreturn_t krait_l2_handle_irq(int irq_num, void *dev)
 
 	regs = get_irq_regs();
 
-	perf_sample_data_init(&data, 0);
-
 	while (pmovsr) {
 		bitp = __ffs(pmovsr);
 
@@ -375,6 +373,8 @@ static irqreturn_t krait_l2_handle_irq(int irq_num, void *dev)
 		armpmu_event_update(event, hwc, idx);
 
 		data.period = event->hw.last_period;
+
+		perf_sample_data_init(&data, 0, event->hw.last_period);
 
 		if (!armpmu_event_set_period(event, hwc, idx))
 			goto next;
