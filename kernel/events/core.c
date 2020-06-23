@@ -42,6 +42,7 @@
 #include "internal.h"
 
 #include <asm/irq_regs.h>
+#include "perf_dbg.h"
 
 static int perf_event_comm_match(struct perf_event *event);
 typedef void (perf_event_aux_output_cb)(struct perf_event *event, void *data);
@@ -5158,6 +5159,8 @@ static void perf_event_task(struct task_struct *task,
 		},
 	};
 
+	perf_debug("type = %d\n", task_event.event_id.header.type);
+	dump_stack();
 	perf_event_aux(perf_event_task_output,
 		       &task_event,
 		       task_ctx);
