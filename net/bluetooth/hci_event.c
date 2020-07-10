@@ -2995,7 +2995,7 @@ static inline void hci_extended_inquiry_result_evt(struct hci_dev *hdev, struct 
 
 	BT_DBG("%s num_rsp %d", hdev->name, num_rsp);
 
-	if (!num_rsp)
+	if (!num_rsp || skb->len < num_rsp * sizeof(*info) + 1)
 		return;
 
 	hci_dev_lock(hdev);
