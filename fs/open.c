@@ -704,10 +704,6 @@ static struct file *do_dentry_open(struct dentry *dentry, struct vfsmount *mnt,
 		return f;
 	}
 
-	if (S_ISREG(inode->i_mode))
-		f->f_mode |= FMODE_SPLICE_WRITE | FMODE_SPLICE_READ;
-
-
 	f->f_op = fops_get(inode->i_fop);
 
 	error = security_dentry_open(f, cred);
