@@ -1772,7 +1772,6 @@ SYSCALL_DEFINE4(epoll_ctl, int, epfd, int, op, int, fd,
 		if (is_file_epoll(tf.file)) {
 			error = -ELOOP;
 			if (ep_loop_check(ep, tf.file) != 0) {
-				clear_tfile_check_list();
 				goto error_tgt_fput;
 			}
 		} else {
@@ -1798,7 +1797,6 @@ SYSCALL_DEFINE4(epoll_ctl, int, epfd, int, op, int, fd,
 			error = ep_insert(ep, &epds, tf.file, fd);
 		} else
 			error = -EEXIST;
-		clear_tfile_check_list();
 		break;
 	case EPOLL_CTL_DEL:
 		if (epi)
@@ -1817,8 +1815,10 @@ SYSCALL_DEFINE4(epoll_ctl, int, epfd, int, op, int, fd,
 	mutex_unlock(&ep->mtx);
 
 error_tgt_fput:
-	if (did_lock_epmutex)
+	if (did_lock_epmutex) {
+		clear_tfile_check_list();
 		mutex_unlock(&epmutex);
+	}
 
 	fdput(tf);
 error_fput:
