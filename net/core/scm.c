@@ -302,7 +302,6 @@ void scm_detach_fds(struct msghdr *msg, struct scm_cookie *scm)
 			break;
 		}
 		/* Bump the usage count and install the file. */
-		get_file(fp[i]);
 		fd_install(new_fd, get_file(fp[i]));
 	}
 
