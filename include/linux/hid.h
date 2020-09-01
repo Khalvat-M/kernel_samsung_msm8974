@@ -73,6 +73,7 @@
 #include <linux/input.h>
 #include <linux/semaphore.h>
 #include <linux/power_supply.h>
+#include <linux/ratelimit.h>
 
 /*
  * We parse each description item into this structure. Short items data
