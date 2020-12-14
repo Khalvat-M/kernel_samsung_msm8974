@@ -1172,6 +1172,11 @@ static int fastrpc_internal_munmap(struct fastrpc_apps *me,
 	VERIFY(err, 0 == (err = fastrpc_munmap_on_dsp(me, munmap, fdata->cid)));
 	if (err)
 		goto bail;
+	VERIFY(err, map != NULL);
+	if (err) {
+		err = -EINVAL;
+		goto bail;
+	}
 	spin_lock(&fdata->hlock);
 	hlist_for_each_entry_safe(map, pos, n, &fdata->hlst, hn) {
 		if (map->vaddrout == munmap->vaddrout &&
