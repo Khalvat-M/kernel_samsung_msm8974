@@ -176,7 +176,7 @@ kgsl_process_init_sysfs(struct kgsl_device *device,
 	unsigned char name[16];
 	int i, ret = 0;
 
-	snprintf(name, sizeof(name), "%d", private->pid);
+	snprintf(name, sizeof(name), "%d", pid_nr(private->pid));
 
 	ret = kobject_init_and_add(&private->kobj, &ktype_mem_entry,
 		kgsl_driver.prockobj, name);
