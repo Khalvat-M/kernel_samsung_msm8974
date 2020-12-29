@@ -338,7 +338,7 @@ TRACE_EVENT(kgsl_mem_alloc,
 	TP_fast_assign(
 		__entry->gpuaddr = mem_entry->memdesc.gpuaddr;
 		__entry->size = mem_entry->memdesc.size;
-		__entry->tgid = mem_entry->priv->pid;
+		__entry->tgid = pid_nr(mem_entry->priv->pid);
 		kgsl_get_memory_usage(__entry->usage, sizeof(__entry->usage),
 				     mem_entry->memdesc.flags);
 		__entry->id = mem_entry->id;
@@ -435,7 +435,7 @@ TRACE_EVENT(kgsl_mem_map,
 		__entry->size = mem_entry->memdesc.size;
 		__entry->fd = fd;
 		__entry->type = mem_entry->memtype;
-		__entry->tgid = mem_entry->priv->pid;
+		__entry->tgid = pid_nr(mem_entry->priv->pid);
 		kgsl_get_memory_usage(__entry->usage, sizeof(__entry->usage),
 				     mem_entry->memdesc.flags);
 		__entry->id = mem_entry->id;
@@ -469,7 +469,7 @@ TRACE_EVENT(kgsl_mem_free,
 		__entry->gpuaddr = mem_entry->memdesc.gpuaddr;
 		__entry->size = mem_entry->memdesc.size;
 		__entry->type = mem_entry->memtype;
-		__entry->tgid = mem_entry->priv->pid;
+		__entry->tgid = pid_nr(mem_entry->priv->pid);
 		kgsl_get_memory_usage(__entry->usage, sizeof(__entry->usage),
 				     mem_entry->memdesc.flags);
 		__entry->id = mem_entry->id;
@@ -500,7 +500,7 @@ TRACE_EVENT(kgsl_mem_sync_cache,
 	TP_fast_assign(
 		__entry->gpuaddr = mem_entry->memdesc.gpuaddr;
 		__entry->size = mem_entry->memdesc.size;
-		__entry->tgid = mem_entry->priv->pid;
+		__entry->tgid = pid_nr(mem_entry->priv->pid);
 		__entry->id = mem_entry->id;
 		kgsl_get_memory_usage(__entry->usage, sizeof(__entry->usage),
 				     mem_entry->memdesc.flags);
