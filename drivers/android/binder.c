@@ -1059,7 +1059,8 @@ static void binder_wakeup_poll_threads_ilocked(struct binder_proc *proc,
 #ifdef CONFIG_SCHED_WALT
 			if (thread->task && current->signal &&
 				(current->signal->oom_score_adj == 0) &&
-				(current->prio < DEFAULT_PRIO))
+				((current->prio < DEFAULT_PRIO) ||
+					(thread->task->group_leader->prio < MAX_RT_PRIO)))
 				thread->task->wts.low_latency = true;
 #endif
 			if (sync)
@@ -1124,7 +1125,8 @@ static void binder_wakeup_thread_ilocked(struct binder_proc *proc,
 #ifdef CONFIG_SCHED_WALT
 		if (thread->task && current->signal &&
 			(current->signal->oom_score_adj == 0) &&
-			(current->prio < DEFAULT_PRIO))
+			((current->prio < DEFAULT_PRIO) ||
+				(thread->task->group_leader->prio < MAX_RT_PRIO)))
 			thread->task->wts.low_latency = true;
 #endif
 		if (sync)
