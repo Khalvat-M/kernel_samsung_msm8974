@@ -185,6 +185,24 @@ struct msm_vidc_stream_userdata_payload {
 	unsigned int data[1];
 };
 
+struct msm_vidc_vui_display_info_payload {
+	unsigned int video_signal_present_flag;
+	unsigned int video_format;
+	unsigned int bit_depth_y;
+	unsigned int bit_depth_c;
+	unsigned int video_full_range_flag;
+	unsigned int color_description_present_flag;
+	unsigned int color_primaries;
+	unsigned int transfer_characteristics;
+	unsigned int matrix_coefficients;
+	unsigned int chroma_location_info_present_flag;
+	unsigned int chroma_format_idc;
+	unsigned int separate_color_plane_flag;
+	unsigned int chroma_sample_loc_type_top_field;
+	unsigned int chroma_sample_loc_type_bottom_field;
+};
+
+
 enum msm_vidc_extradata_type {
 	EXTRADATA_NONE = 0x00000000,
 	EXTRADATA_MB_QUANTIZATION = 0x00000001,
@@ -207,6 +225,7 @@ enum msm_vidc_extradata_type {
 	EXTRADATA_METADATA_FILLER = 0x7FE00002,
 	MSM_VIDC_EXTRADATA_METADATA_LTR = 0x7F100004,
 	EXTRADATA_METADATA_MBI = 0x7F100005,
+	MSM_VIDC_EXTRADATA_VUI_DISPLAY_INFO = 0x7F100006,
 };
 enum msm_vidc_interlace_type {
 	INTERLACE_FRAME_PROGRESSIVE = 0x01,
@@ -225,5 +244,66 @@ enum msm_vidc_userdata_type {
 	MSM_VIDC_USERDATA_TYPE_FRAME = 0x1,
 	MSM_VIDC_USERDATA_TYPE_TOP_FIELD = 0x2,
 	MSM_VIDC_USERDATA_TYPE_BOTTOM_FIELD = 0x3,
+};
+
+enum msm_vidc_h264_color_primaries_values {
+	MSM_VIDC_RESERVED_1 = 0,
+	MSM_VIDC_BT709_5 = 1,
+	MSM_VIDC_UNSPECIFIED = 2,
+	MSM_VIDC_RESERVED_2 = 3,
+	MSM_VIDC_BT470_6_M = 4,
+	MSM_VIDC_BT601_6_625 = 5,
+	MSM_VIDC_BT470_6_BG = MSM_VIDC_BT601_6_625,
+	MSM_VIDC_BT601_6_525 = 6,
+	MSM_VIDC_SMPTE_240M = 7,
+	MSM_VIDC_GENERIC_FILM = 8,
+	MSM_VIDC_BT2020 = 9,
+};
+
+enum msm_vidc_vp9_color_primaries_values {
+	MSM_VIDC_CS_UNKNOWN,
+	MSM_VIDC_CS_BT_601,
+	MSM_VIDC_CS_BT_709,
+	MSM_VIDC_CS_SMPTE_170,
+	MSM_VIDC_CS_SMPTE_240,
+	MSM_VIDC_CS_BT_2020,
+	MSM_VIDC_CS_RESERVED,
+	MSM_VIDC_CS_RGB,
+};
+
+enum msm_vidc_h264_matrix_coeff_values {
+	MSM_VIDC_MATRIX_RGB = 0,
+	MSM_VIDC_MATRIX_BT_709_5 = 1,
+	MSM_VIDC_MATRIX_UNSPECIFIED = 2,
+	MSM_VIDC_MATRIX_RESERVED = 3,
+	MSM_VIDC_MATRIX_FCC_47 = 4,
+	MSM_VIDC_MATRIX_601_6_625 = 5,
+	MSM_VIDC_MATRIX_BT470_BG = MSM_VIDC_MATRIX_601_6_625,
+	MSM_VIDC_MATRIX_601_6_525 = 6,
+	MSM_VIDC_MATRIX_SMPTE_170M = MSM_VIDC_MATRIX_601_6_525,
+	MSM_VIDC_MATRIX_SMPTE_240M = 7,
+	MSM_VIDC_MATRIX_Y_CG_CO = 8,
+	MSM_VIDC_MATRIX_BT_2020 = 9,
+	MSM_VIDC_MATRIX_BT_2020_CONST = 10,
+};
+
+enum msm_vidc_h264_transfer_chars_values {
+	MSM_VIDC_TRANSFER_RESERVED_1 = 0,
+	MSM_VIDC_TRANSFER_BT709_5 = 1,
+	MSM_VIDC_TRANSFER_UNSPECIFIED = 2,
+	MSM_VIDC_TRANSFER_RESERVED_2 = 3,
+	MSM_VIDC_TRANSFER_BT_470_6_M = 4,
+	MSM_VIDC_TRANSFER_BT_470_6_BG = 5,
+	MSM_VIDC_TRANSFER_601_6_625 = 6,
+	MSM_VIDC_TRANSFER_601_6_525 = MSM_VIDC_TRANSFER_601_6_625,
+	MSM_VIDC_TRANSFER_SMPTE_240M = 7,
+	MSM_VIDC_TRANSFER_LINEAR = 8,
+	MSM_VIDC_TRANSFER_LOG_100_1 = 9,
+	MSM_VIDC_TRANSFER_LOG_100_SQRT10_1 = 10,
+	MSM_VIDC_TRANSFER_IEC_61966 = 11,
+	MSM_VIDC_TRANSFER_BT_1361 = 12,
+	MSM_VIDC_TRANSFER_SRGB = 13,
+	MSM_VIDC_TRANSFER_BT_2020_10 = 14,
+	MSM_VIDC_TRANSFER_BT_2020_12 = 15,
 };
 #endif
