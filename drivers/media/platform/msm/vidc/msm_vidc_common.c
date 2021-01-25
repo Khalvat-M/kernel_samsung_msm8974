@@ -3316,6 +3316,9 @@ enum hal_extradata_id msm_comm_get_hal_extradata_index(
 	case V4L2_MPEG_VIDC_EXTRADATA_METADATA_MBI:
 		ret = HAL_EXTRADATA_METADATA_MBI;
 		break;
+	case V4L2_MPEG_VIDC_EXTRADATA_VUI_DISPLAY:
+		ret = HAL_EXTRADATA_VUI_DISPLAY_INFO;
+		break;
 	case V4L2_MPEG_VIDC_EXTRADATA_STREAM_USERDATA:
 		ret = HAL_EXTRADATA_STREAM_USERDATA;
 		break;

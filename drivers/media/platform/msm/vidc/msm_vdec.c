@@ -73,6 +73,7 @@ static const char *const mpeg_video_vidc_extradata[] = {
 	"Extradata digital zoom",
 	"Extradata aspect ratio",
 	"Extradata mpeg2 seqdisp",
+	"Extradata display VUI",
 };
 static const char *const mpeg_vidc_video_alloc_mode_type[] = {
 	"Buffer Allocation Static",
@@ -212,7 +213,7 @@ static struct msm_vidc_ctrl msm_vdec_ctrls[] = {
 		.name = "Extradata Type",
 		.type = V4L2_CTRL_TYPE_MENU,
 		.minimum = V4L2_MPEG_VIDC_EXTRADATA_NONE,
-		.maximum = V4L2_MPEG_VIDC_EXTRADATA_STREAM_USERDATA,
+		.maximum = V4L2_MPEG_VIDC_EXTRADATA_VUI_DISPLAY,
 		.default_value = V4L2_MPEG_VIDC_EXTRADATA_NONE,
 		.menu_skip_mask = ~(
 			(1 << V4L2_MPEG_VIDC_EXTRADATA_NONE) |
@@ -234,7 +235,8 @@ static struct msm_vidc_ctrl msm_vdec_ctrls[] = {
 			(1 << V4L2_MPEG_VIDC_EXTRADATA_MPEG2_SEQDISP) |
 			(1 << V4L2_MPEG_VIDC_EXTRADATA_FRAME_QP) |
 			(1 << V4L2_MPEG_VIDC_EXTRADATA_FRAME_BITS_INFO) |
-			(1 << V4L2_MPEG_VIDC_EXTRADATA_STREAM_USERDATA)
+			(1 << V4L2_MPEG_VIDC_EXTRADATA_STREAM_USERDATA) |
+			(1 << V4L2_MPEG_VIDC_EXTRADATA_VUI_DISPLAY)
 			),
 		.qmenu = mpeg_video_vidc_extradata,
 		.step = 0,
