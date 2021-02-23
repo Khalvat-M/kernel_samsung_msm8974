@@ -1,5 +1,6 @@
 # scripts/dtc makefile
 
+# *** Also keep .gitignore in sync when changing ***
 hostprogs-y	:= dtc fdtoverlay
 ifeq ($(DTC_EXT),)
 always		:= $(hostprogs-y)
