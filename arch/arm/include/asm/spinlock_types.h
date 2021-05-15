@@ -6,7 +6,7 @@
 #endif
 
 typedef struct {
-	volatile unsigned int lock;
+	unsigned int lock;
 } arch_spinlock_t;
 
 #define __ARCH_SPIN_LOCK_UNLOCKED	{ 0 }
