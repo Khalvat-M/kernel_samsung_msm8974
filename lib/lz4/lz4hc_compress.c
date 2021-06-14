@@ -771,7 +771,7 @@ int lz4hc_compress(const unsigned char *src, size_t src_len,
 	unsigned char *dst, size_t *dst_len, void *wrkmem)
 {
 	*dst_len = LZ4_compress_HC(src, dst, src_len,
-		*dst_len, LZ4HC_DEFAULT_CLEVEL, wrkmem);
+		lz4_compressbound(src_len), LZ4HC_DEFAULT_CLEVEL, wrkmem);
 
 	/*
 	 * Prior lz4hc_compress will return -1 in case of error
