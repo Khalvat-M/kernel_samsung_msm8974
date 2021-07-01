@@ -40,6 +40,7 @@
  * @endp: A pointer to the end of the parsed string will be placed here
  * @base: The number base to use
  */
+noinline
 unsigned long long simple_strtoull(const char *cp, char **endp, unsigned int base)
 {
 	unsigned long long result;
