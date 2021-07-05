@@ -1764,7 +1764,7 @@ void ipv4_update_pmtu(struct sk_buff *skb, struct net *net, u32 mtu,
 
 	flowi4_init_output(&fl4, oif, mark, RT_TOS(iph->tos), RT_SCOPE_UNIVERSE,
 			   protocol, flow_flags | FLOWI_FLAG_PRECOW_METRICS,
-			   iph->daddr, iph->saddr, 0, 0);
+			   iph->daddr, iph->saddr, 0, 0, sock_net_uid(net, NULL));
 	rt = __ip_route_output_key(net, &fl4);
 	if (!IS_ERR(rt)) {
 		ip_rt_update_pmtu(&rt->dst, mtu);
