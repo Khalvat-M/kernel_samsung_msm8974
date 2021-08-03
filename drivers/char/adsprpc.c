@@ -1462,6 +1462,11 @@ static long fastrpc_device_ioctl(struct file *file, unsigned int ioctl_num,
 			break;
 		}
 		break;
+	// Handle FASTRPC_IOCTL_CONTROL so a STS test passes, we don't have most functionality of this driver in 3.4
+	// #define FASTRPC_IOCTL_CONTROL   _IOWR('R', 12, struct fastrpc_ioctl_control)
+	case _IOC(_IOC_READ|_IOC_WRITE, 'R', 12, 12):
+		pr_info("adsprpc: FASTRPC_IOCTL_CONTROL is a stub!\n");
+		break;
 	default:
 		err = -ENOTTY;
 		break;
