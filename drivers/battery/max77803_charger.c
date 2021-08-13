@@ -58,9 +58,9 @@ struct max77803_charger_data {
 	struct mutex ops_lock;
 
 	/* wakelock */
-	struct wake_lock recovery_wake_lock;
-	struct wake_lock wpc_wake_lock;
-	struct wake_lock chgin_wake_lock;
+	struct wakeup_source recovery_ws;
+	struct wakeup_source wpc_ws;
+	struct wakeup_source chgin_ws;
 
 	unsigned int	is_charging;
 	unsigned int	charging_type;
@@ -556,7 +556,7 @@ static void max77803_recovery_work(struct work_struct *work)
 	u8 dtls_02, byp_dtls;
 	pr_debug("%s\n", __func__);
 
-	wake_unlock(&chg_data->recovery_wake_lock);
+	__pm_relax(&chg_data->recovery_ws);
 	if ((!chg_data->is_charging) || mutex_is_locked(&chg_data->ops_lock) ||
 			(chg_data->cable_type != POWER_SUPPLY_TYPE_MAINS))
 		return;
@@ -596,7 +596,7 @@ static void max77803_recovery_work(struct work_struct *work)
 
 		/* schedule softreg recovery wq */
 		if (chg_data->soft_reg_recovery_cnt < RECOVERY_CNT) {
-			wake_lock(&chg_data->recovery_wake_lock);
+			__pm_stay_awake(&chg_data->recovery_ws);
 			queue_delayed_work(chg_data->wqueue, &chg_data->recovery_work,
 				msecs_to_jiffies(RECOVERY_DELAY));
 		} else {
@@ -641,7 +641,7 @@ static void reduce_input_current(struct max77803_charger_data *charger, int cur)
 	if(charger->cable_type == POWER_SUPPLY_TYPE_MAINS) {
 		/* schedule softreg recovery wq */
 		cancel_delayed_work_sync(&charger->recovery_work);
-		wake_lock(&charger->recovery_wake_lock);
+		__pm_stay_awake(&charger->recovery_ws);
 		queue_delayed_work(charger->wqueue, &charger->recovery_work,
 				msecs_to_jiffies(RECOVERY_DELAY));
 	}
@@ -1386,7 +1386,7 @@ static void wpc_detect_work(struct work_struct *work)
 
 	chg_data->wc_w_state = wc_w_state;
 
-	wake_unlock(&chg_data->wpc_wake_lock);
+	__pm_relax(&chg_data->wpc_ws);
 }
 
 static irqreturn_t wpc_charger_irq(int irq, void *data)
@@ -1394,7 +1394,7 @@ static irqreturn_t wpc_charger_irq(int irq, void *data)
 	struct max77803_charger_data *chg_data = data;
 	unsigned long delay;
 
-	wake_lock(&chg_data->wpc_wake_lock);
+	__pm_stay_awake(&chg_data->wpc_ws);
 #ifdef CONFIG_SAMSUNG_BATTERY_FACTORY
 	delay = msecs_to_jiffies(0);
 #else
@@ -1498,7 +1498,7 @@ static void max77803_chgin_isr_work(struct work_struct *work)
 	union power_supply_propval value;
 	int stable_count = 0;
 
-	wake_lock(&charger->chgin_wake_lock);
+	__pm_stay_awake(&charger->chgin_ws);
 
 	while (1) {
 		psy_do_property("battery", get,
@@ -1580,7 +1580,7 @@ static void max77803_chgin_isr_work(struct work_struct *work)
 	reg_data = (0 << CHGIN_SHIFT);
 	max77803_update_reg(charger->max77803->i2c, MAX77803_CHG_REG_CHG_INT_MASK, reg_data,
 			CHGIN_MASK);
-	wake_unlock(&charger->chgin_wake_lock);
+	__pm_relax(&charger->chgin_ws);
 }
 
 static irqreturn_t max77803_chgin_irq(int irq, void *data)
@@ -1782,15 +1782,12 @@ static __devinit int max77803_charger_probe(struct platform_device *pdev)
 		pr_err("%s: Fail to Create Workqueue\n", __func__);
 		goto err_free;
 	}
-	wake_lock_init(&charger->chgin_wake_lock, WAKE_LOCK_SUSPEND,
-			            "charger-chgin");
+	wakeup_source_init(&charger->chgin_ws, "charger-chgin");
 	INIT_WORK(&charger->chgin_work, max77803_chgin_isr_work);
 	INIT_DELAYED_WORK(&charger->chgin_init_work, max77803_chgin_init_work);
-	wake_lock_init(&charger->recovery_wake_lock, WAKE_LOCK_SUSPEND,
-					       "charger-recovery");
+	wakeup_source_init(&charger->recovery_ws, "charger-recovery");
 	INIT_DELAYED_WORK(&charger->recovery_work, max77803_recovery_work);
-	wake_lock_init(&charger->wpc_wake_lock, WAKE_LOCK_SUSPEND,
-					       "charger-wpc");
+	wakeup_source_init(&charger->wpc_ws, "charger-wpc");
 	INIT_DELAYED_WORK(&charger->wpc_work, wpc_detect_work);
 	ret = power_supply_register(&pdev->dev, &charger->psy_chg);
 	if (ret) {

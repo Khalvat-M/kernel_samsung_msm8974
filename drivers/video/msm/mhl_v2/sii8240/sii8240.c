@@ -3335,7 +3335,7 @@ static int sii8240_mhl_onoff(unsigned long event)
 
 	if (event) {
 		pr_info("sii8240:detection started\n");
-		wake_lock(&sii8240->mhl_wake_lock);
+		__pm_stay_awake(&sii8240->mhl_ws);
 		sii8240->mhl_connected = true;
 		sii8240->muic_state = MHL_ATTACHED;
 		sii8240->cbus_ready = 0;
@@ -3346,7 +3346,7 @@ static int sii8240_mhl_onoff(unsigned long event)
 			sii8240->pdata->charger_mhl_cb(false, -1);
 		sii8240->mhl_connected = false;
 		sii8240->muic_state = MHL_DETACHED;
-		wake_unlock(&sii8240->mhl_wake_lock);
+		__pm_relax(&sii8240->mhl_ws);
 		mutex_lock(&sii8240->lock);
 #ifdef CONFIG_MUIC_SUPPORT_MULTIMEDIA_DOCK
 		sii8240->pdata->is_multimediadock = false;
@@ -5091,8 +5091,7 @@ static int __devinit sii8240_tmds_i2c_probe(struct i2c_client *client,
 	disable_irq(client->irq);
 	sii8240->irq_enabled = false;
 
-	wake_lock_init(&sii8240->mhl_wake_lock,
-			WAKE_LOCK_SUSPEND, "mhl_wake_lock");
+	wakeup_source_init(&sii8240->mhl_ws, "mhl_ws");
 
 	if (sii8240->pdata->hdmi_mhl_ops) {
 		struct msm_hdmi_mhl_ops *hdmi_mhl_ops =	sii8240->pdata->hdmi_mhl_ops;
