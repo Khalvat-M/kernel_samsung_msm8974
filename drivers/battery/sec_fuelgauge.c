@@ -112,10 +112,10 @@ static int sec_fg_get_property(struct power_supply *psy,
 			if (soc_type == SEC_FUELGAUGE_CAPACITY_TYPE_RAW)
 				break;
 
-			/* check whether doing the wake_unlock */
+			/* check whether doing the __pm_relax */
 			if ((val->intval > fuelgauge->pdata->fuel_alert_soc) &&
 				fuelgauge->is_fuel_alerted) {
-				wake_unlock(&fuelgauge->fuel_alert_wake_lock);
+				__pm_relax(&fuelgauge->fuel_alert_ws);
 				sec_hal_fg_fuelalert_init(fuelgauge->client,
 					fuelgauge->pdata->fuel_alert_soc);
 			}
@@ -318,9 +318,9 @@ static irqreturn_t sec_fg_irq_thread(int irq, void *irq_data)
 		}
 
 		if (fuel_alerted)
-			wake_lock(&fuelgauge->fuel_alert_wake_lock);
+			__pm_stay_awake(&fuelgauge->fuel_alert_ws);
 		else
-			wake_unlock(&fuelgauge->fuel_alert_wake_lock);
+			__pm_relax(&fuelgauge->fuel_alert_ws);
 
 		schedule_delayed_work(&fuelgauge->isr_work, 0);
 
@@ -590,8 +590,7 @@ static int __devinit sec_fuelgauge_probe(struct i2c_client *client,
 	if (fuelgauge->pdata->fuel_alert_soc >= 0) {
 		if (sec_hal_fg_fuelalert_init(fuelgauge->client,
 			fuelgauge->pdata->fuel_alert_soc))
-			wake_lock_init(&fuelgauge->fuel_alert_wake_lock,
-				WAKE_LOCK_SUSPEND, "fuel_alerted");
+			wakeup_source_init(&fuelgauge->fuel_alert_ws, "fuel_alerted");
 		else {
 			dev_err(&client->dev,
 				"%s: Failed to Initialize Fuel-alert\n",
@@ -646,7 +645,7 @@ static int __devinit sec_fuelgauge_probe(struct i2c_client *client,
 err_irq:
 	if (fuelgauge->fg_irq > 0)
 		free_irq(fuelgauge->fg_irq, fuelgauge);
-	wake_lock_destroy(&fuelgauge->fuel_alert_wake_lock);
+	wakeup_source_trash(&fuelgauge->fuel_alert_ws);
 err_supply_unreg:
 	power_supply_unregister(&fuelgauge->psy_fg);
 err_devm_free:
@@ -668,7 +667,7 @@ static int __devexit sec_fuelgauge_remove(
 	struct sec_fuelgauge_info *fuelgauge = i2c_get_clientdata(client);
 
 	if (fuelgauge->pdata->fuel_alert_soc >= 0)
-		wake_lock_destroy(&fuelgauge->fuel_alert_wake_lock);
+		wakeup_source_trash(&fuelgauge->fuel_alert_ws);
 
 	return 0;
 }

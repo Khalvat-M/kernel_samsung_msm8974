@@ -27,7 +27,6 @@
 #include <linux/notifier.h>
 #include <linux/timer.h>
 #include <linux/switch.h>
-#include <linux/wakelock.h>
 
 #ifdef CONFIG_EXTCON
 #include <linux/extcon.h>
@@ -1061,7 +1060,7 @@ struct sii8240_data {
 
 	struct switch_dev		mhl_event_switch;
 	struct timer_list		mhl_timer;
-        struct wake_lock                mhl_wake_lock;
+        struct wakeup_source            mhl_ws;
 
 	bool				tmds_enable;
 	bool				ap_hdcp_success;
