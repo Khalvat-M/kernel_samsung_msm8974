@@ -14,6 +14,7 @@
 
 #include <linux/module.h>
 #include <linux/of_gpio.h>
+#include <linux/ratelimit.h>
 #include "msm_sd.h"
 #include "msm_actuator.h"
 #include "msm_cci.h"
@@ -1157,7 +1158,7 @@ static int msm_actuator_close(struct v4l2_subdev *sd,
 		rc = a_ctrl->i2c_client.i2c_func_tbl->i2c_util(
 			&a_ctrl->i2c_client, MSM_CCI_RELEASE);
 		if (rc < 0)
-			pr_err("cci_init failed\n");
+			pr_err_ratelimited("cci_init failed\n");
 	}
 	CDBG("Exit\n");
 	return rc;
