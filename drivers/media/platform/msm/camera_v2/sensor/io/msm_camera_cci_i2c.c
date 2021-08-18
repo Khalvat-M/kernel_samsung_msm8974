@@ -10,6 +10,7 @@
  * GNU General Public License for more details.
  */
 
+#include <linux/ratelimit.h>
 #include <mach/camera2.h>
 #include "msm_camera_i2c.h"
 #include "msm_cci.h"
@@ -715,7 +716,7 @@ int32_t msm_sensor_cci_i2c_util(struct msm_camera_i2c_client *client,
 	rc = v4l2_subdev_call(client->cci_client->cci_subdev,
 			      core, ioctl, VIDIOC_MSM_CCI_CFG, &cci_ctrl);
 	if (rc < 0) {
-		pr_err("%s line %d rc = %d\n", __func__, __LINE__, rc);
+		pr_err_ratelimited("%s line %d rc = %d\n", __func__, __LINE__, rc);
 		return rc;
 	}
 	return cci_ctrl.status;
