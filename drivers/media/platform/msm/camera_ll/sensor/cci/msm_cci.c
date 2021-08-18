@@ -17,6 +17,7 @@
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 #include <linux/of_platform.h>
+#include <linux/ratelimit.h>
 #include <media/msm_isp.h>
 #include "msm_sd.h"
 #include "msm_cci.h"
@@ -768,7 +769,7 @@ static int32_t msm_cci_release(struct v4l2_subdev *sd)
 	CDBG("%s:%d Enter\n", __func__, __LINE__);
 
 	if (!cci_dev->ref_count || cci_dev->cci_state != CCI_STATE_ENABLED) {
-		pr_err("%s invalid ref count %d / cci state %d\n",
+		pr_err_ratelimited("%s invalid ref count %d / cci state %d\n",
 			__func__, cci_dev->ref_count, cci_dev->cci_state);
 		return -EINVAL;
 	}
