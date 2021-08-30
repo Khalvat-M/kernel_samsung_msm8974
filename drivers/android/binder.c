@@ -2432,6 +2432,7 @@ static bool binder_validate_fixup(struct binder_proc *proc,
 }
 
 static void binder_transaction_buffer_release(struct binder_proc *proc,
+					      struct binder_thread *thread,
 					      struct binder_buffer *buffer,
 					      binder_size_t failed_at,
 					      bool is_failure)
@@ -2580,6 +2581,13 @@ static void binder_transaction_buffer_release(struct binder_proc *proc,
 							      offset,
 							      sizeof(fd));
 				task_close_fd(proc, fd);
+				/*
+				 * Need to make sure the thread goes
+				 * back to userspace to complete the
+				 * deferred close
+				 */
+				if (thread)
+					thread->looper_need_return = true;
 			}
 		} break;
 		default:
@@ -3664,7 +3672,7 @@ err_bad_offset:
 err_bad_parent:
 err_copy_data_failed:
 	trace_binder_transaction_failed_buffer_release(t->buffer);
-	binder_transaction_buffer_release(target_proc, t->buffer,
+	binder_transaction_buffer_release(target_proc, NULL, t->buffer,
 					  buffer_offset, true);
 	if (target_node)
 		binder_dec_node_tmpref(target_node);
@@ -3948,7 +3956,7 @@ static int binder_thread_write(struct binder_proc *proc,
 				binder_node_inner_unlock(buf_node);
 			}
 			trace_binder_transaction_buffer_release(buffer);
-			binder_transaction_buffer_release(proc, buffer, 0, false);
+			binder_transaction_buffer_release(proc, thread, buffer, 0, false);
 			binder_alloc_free_buf(&proc->alloc, buffer);
 			break;
 		}
