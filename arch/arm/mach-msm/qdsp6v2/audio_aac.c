@@ -16,6 +16,7 @@
  */
 
 #include <linux/msm_audio_aac.h>
+#include <linux/ratelimit.h>
 #include "audio_utils_aio.h"
 
 #define AUDIO_AAC_DUAL_MONO_INVALID -1
@@ -185,7 +186,7 @@ static long audio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		pr_debug("%s[%pK]: Calling utils ioctl\n", __func__, audio);
 		rc = audio->codec_ioctl(file, cmd, arg);
 		if (rc)
-			pr_err("%s[%pK]:Failed in utils_ioctl: %d\n",
+			pr_err_ratelimited("%s[%pK]:Failed in utils_ioctl: %d\n",
 				__func__, audio, rc);
 	}
 	return rc;
