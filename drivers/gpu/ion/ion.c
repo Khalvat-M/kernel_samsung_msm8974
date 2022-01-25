@@ -1448,9 +1448,9 @@ static long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		if (IS_ERR(handle))
 			return PTR_ERR(handle);
-		pass_to_user(handle);
 		data.handle = (ion_user_handle_t)handle->id;
 
+		pass_to_user(handle);
 		if (copy_to_user((void __user *)arg, &data, sizeof(data))) {
 			mutex_lock(&client->lock);
 			user_ion_free_nolock(client, handle);
@@ -1511,11 +1511,12 @@ static long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		if (IS_ERR(handle)) {
 			ret = PTR_ERR(handle);
 		} else {
+			data.handle = (ion_user_handle_t)handle->id;
 			handle = pass_to_user(handle);
-			if (IS_ERR(handle))
+			if (IS_ERR(handle)) {
 				ret = PTR_ERR(handle);
-			else
-				data.handle = (ion_user_handle_t)handle->id;
+				data.handle = 0;
+			}
 		}
 
 		if (copy_to_user((void __user *)arg, &data,
