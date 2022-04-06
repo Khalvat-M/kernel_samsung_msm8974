@@ -169,11 +169,6 @@ static inline bool wq_has_sleeper(wait_queue_head_t *wq)
 	return waitqueue_active(wq);
 }
 
-static inline struct inode *d_inode(const struct dentry *dentry)
-{
-	return dentry->d_inode;
-}
-
 static inline struct dentry *file_dentry(const struct file *file)
 {
 	return file->f_path.dentry;
@@ -1934,11 +1929,6 @@ static inline int f2fs_readonly(struct super_block *sb)
 static inline bool f2fs_cp_error(struct f2fs_sb_info *sbi)
 {
 	return is_set_ckpt_flags(sbi, CP_ERROR_FLAG);
-}
-
-static inline struct inode *file_inode(struct file *f)
-{
-	return f->f_path.dentry->d_inode;
 }
 
 static inline bool is_dot_dotdot(const struct qstr *str)
