@@ -668,7 +668,6 @@ static int do_signal(struct pt_regs *regs, int syscall)
 				regs->ARM_r0 = -EINTR;
 				regs->ARM_pc = continue_addr;
 			}
-			clear_thread_flag(TIF_SYSCALL_RESTARTSYS);
 		}
 
 		if (test_thread_flag(TIF_RESTORE_SIGMASK))
@@ -686,17 +685,6 @@ static int do_signal(struct pt_regs *regs, int syscall)
 				clear_thread_flag(TIF_RESTORE_SIGMASK);
 		}
 		return 0;
-	}
-
-	if (syscall) {
-		/*
-		 * Handle restarting a different system call.  As above,
-		 * if a debugger has chosen to restart at a different PC,
-		 * ignore the restart.
-		 */
-		if (retval == -ERESTART_RESTARTBLOCK
-		    && regs->ARM_pc == restart_addr)
-			set_thread_flag(TIF_SYSCALL_RESTARTSYS);
 	}
 
 	/* If there's no signal to deliver, we just put the saved sigmask
