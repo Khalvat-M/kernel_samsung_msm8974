@@ -1610,7 +1610,7 @@ yyreduce:
 #line 213 "dtc-parser.y" /* yacc.c:1646  */
     {
 			/* build empty node */
-			(yyval.node) = name_node(build_node(NULL, NULL), "");
+			(yyval.node) = name_node(build_node(NULL, NULL, NULL), "");
 		}
 #line 1616 "dtc-parser.tab.c" /* yacc.c:1646  */
     break;
@@ -1618,7 +1618,7 @@ yyreduce:
   case 17:
 #line 221 "dtc-parser.y" /* yacc.c:1646  */
     {
-			(yyval.node) = build_node((yyvsp[-3].proplist), (yyvsp[-2].nodelist));
+			(yyval.node) = build_node((yyvsp[-3].proplist), (yyvsp[-2].nodelist), (NULL));
 		}
 #line 1624 "dtc-parser.tab.c" /* yacc.c:1646  */
     break;
@@ -1642,7 +1642,7 @@ yyreduce:
   case 20:
 #line 239 "dtc-parser.y" /* yacc.c:1646  */
     {
-			(yyval.prop) = build_property((yyvsp[-3].propnodename), (yyvsp[-1].data));
+			(yyval.prop) = build_property((yyvsp[-3].propnodename), (yyvsp[-1].data), (NULL));
 		}
 #line 1648 "dtc-parser.tab.c" /* yacc.c:1646  */
     break;
@@ -1650,7 +1650,7 @@ yyreduce:
   case 21:
 #line 243 "dtc-parser.y" /* yacc.c:1646  */
     {
-			(yyval.prop) = build_property((yyvsp[-1].propnodename), empty_data);
+			(yyval.prop) = build_property((yyvsp[-1].propnodename), empty_data, (NULL));
 		}
 #line 1656 "dtc-parser.tab.c" /* yacc.c:1646  */
     break;
@@ -2062,7 +2062,7 @@ yyreduce:
   case 84:
 #line 518 "dtc-parser.y" /* yacc.c:1646  */
     {
-			(yyval.node) = name_node(build_node_delete(), (yyvsp[-1].propnodename));
+			(yyval.node) = name_node(build_node_delete(NULL), (yyvsp[-1].propnodename));
 		}
 #line 2068 "dtc-parser.tab.c" /* yacc.c:1646  */
     break;
