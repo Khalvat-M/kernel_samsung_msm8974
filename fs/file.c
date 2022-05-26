@@ -441,7 +441,6 @@ int __alloc_fd(struct files_struct *files,
 	       unsigned start, unsigned end, unsigned flags)
 {
 	unsigned int fd;
-	unsigned end = rlimit(RLIMIT_NOFILE);
 	int error;
 	struct fdtable *fdt;
 
