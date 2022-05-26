@@ -16,7 +16,6 @@
 #include <linux/init.h>
 #include <linux/key.h>
 #include <linux/selinux.h>
-#include <linux/uidgid.h>
 #include <linux/atomic.h>
 #include <linux/uidgid.h>
 
