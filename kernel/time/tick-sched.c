@@ -573,6 +573,7 @@ static void tick_nohz_restart_sched_tick(struct tick_sched *ts, ktime_t now)
 	tick_do_update_jiffies64(now);
 	update_cpu_load_nohz();
 
+        calc_load_exit_idle();
 	touch_softlockup_watchdog();
 	/*
 	 * Cancel the scheduled timer and restore the tick
@@ -599,8 +600,6 @@ static void tick_nohz_account_idle_ticks(struct tick_sched *ts)
 	if (ticks && ticks < LONG_MAX)
 		account_idle_ticks(ticks);
 #endif
-
-	calc_load_exit_idle();
 }
 
 /**
