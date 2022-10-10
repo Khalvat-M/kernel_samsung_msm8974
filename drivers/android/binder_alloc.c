@@ -1071,9 +1071,17 @@ err_get_alloc_mutex_failed:
 	return LRU_SKIP;
 }
 
-static int binder_shrink(struct shrinker *shrink, struct shrink_control *sc)
+static unsigned long
+binder_shrink_count(struct shrinker *shrink, struct shrink_control *sc)
 {
-	int ret;
+	unsigned long ret = list_lru_count(&binder_alloc_lru);
+	return ret;
+}
+
+static unsigned long
+binder_shrink_scan(struct shrinker *shrink, struct shrink_control *sc)
+{
+	unsigned long ret;
 
 	ret = list_lru_walk(&binder_alloc_lru, binder_alloc_free_page,
 			    NULL, sc->nr_to_scan);
@@ -1081,7 +1089,8 @@ static int binder_shrink(struct shrinker *shrink, struct shrink_control *sc)
 }
 
 static struct shrinker binder_shrinker = {
-	.shrink = binder_shrink,
+	.count_objects = binder_shrink_count,
+	.scan_objects = binder_shrink_scan,
 	.seeks = DEFAULT_SEEKS,
 };
 
@@ -1099,10 +1108,16 @@ void binder_alloc_init(struct binder_alloc *alloc)
 	INIT_LIST_HEAD(&alloc->buffers);
 }
 
-void binder_alloc_shrinker_init(void)
+int binder_alloc_shrinker_init(void)
 {
-	list_lru_init(&binder_alloc_lru);
-	register_shrinker(&binder_shrinker);
+	int ret = list_lru_init(&binder_alloc_lru);
+
+	if (ret == 0) {
+		ret = register_shrinker(&binder_shrinker);
+		if (ret)
+			list_lru_destroy(&binder_alloc_lru);
+	}
+	return ret;
 }
 
 /**
