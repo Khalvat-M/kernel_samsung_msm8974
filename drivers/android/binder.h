@@ -27,4 +27,3 @@
 #include <uapi/linux/android/binder.h>
 
 #endif /* _LINUX_BINDER_H */
-
