@@ -55,16 +55,6 @@ static inline void inode_unlock(struct inode *inode)
 	mutex_unlock(&inode->i_mutex);
 }
 
-static inline struct inode *file_inode(struct file *f)
-{
-	return f->f_path.dentry->d_inode;
-}
-
-static inline struct inode *d_inode(const struct dentry *dentry)
-{
-	return dentry->d_inode;
-}
-
 static inline bool d_really_is_positive(const struct dentry *dentry)
 {
 	return dentry->d_inode != NULL;
