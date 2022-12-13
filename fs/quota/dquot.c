@@ -709,8 +709,9 @@ static int shrink_dqcache_memory(struct shrinker *shrink,
 		prune_dqcache(nr);
 		spin_unlock(&dq_list_lock);
 	}
-	return vfs_pressure_ratio(
-	percpu_counter_read_positive(&dqstats.counter[DQST_FREE_DQUOTS]));
+	return ((unsigned)
+		percpu_counter_read_positive(&dqstats.counter[DQST_FREE_DQUOTS])
+		/100) * sysctl_vfs_cache_pressure;
 }
 
 static struct shrinker dqcache_shrinker = {
