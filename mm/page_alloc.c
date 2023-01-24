@@ -81,6 +81,11 @@ DEFINE_PER_CPU(int, _numa_mem_);		/* Kernel "local memory" node */
 EXPORT_PER_CPU_SYMBOL(_numa_mem_);
 #endif
 
+#ifdef CONFIG_GCC_PLUGIN_LATENT_ENTROPY
+volatile u64 latent_entropy __latent_entropy;
+EXPORT_SYMBOL(latent_entropy);
+#endif
+
 /*
  * Array of node states.
  */

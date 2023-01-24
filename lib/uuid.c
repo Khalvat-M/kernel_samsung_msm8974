@@ -23,13 +23,33 @@
 #include <linux/uuid.h>
 #include <linux/random.h>
 
+/***************************************************************
+ * Random UUID interface
+ *
+ * Used here for a Boot ID, but can be useful for other kernel
+ * drivers.
+ ***************************************************************/
+
+/*
+ * Generate random UUID
+ */
+void generate_random_uuid(unsigned char uuid[16])
+{
+	get_random_bytes(uuid, 16);
+	/* Set UUID version to 4 --- truly random generation */
+	uuid[6] = (uuid[6] & 0x0F) | 0x40;
+	/* Set the UUID variant to DCE */
+	uuid[8] = (uuid[8] & 0x3F) | 0x80;
+}
+EXPORT_SYMBOL(generate_random_uuid);
+
 static void __uuid_gen_common(__u8 b[16])
 {
 	int i;
 	u32 r;
 
 	for (i = 0; i < 4; i++) {
-		r = random32();
+		r = prandom_u32();
 		memcpy(b + i * 4, &r, 4);
 	}
 	/* reversion 0b10 */

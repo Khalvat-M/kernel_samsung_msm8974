@@ -718,17 +718,8 @@ not match our unaligned address for < 2.6.24
 
 #define KMALLOC_FLAG (CAN_SLEEP() ? GFP_KERNEL: GFP_ATOMIC)
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
 #define RANDOM32	prandom_u32
-#else
-#define RANDOM32	random32
-#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0) */
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
 #define SRANDOM32(entropy)	prandom_seed(entropy)
-#else
-#define SRANDOM32(entropy)	srandom32(entropy)
-#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0) */
 
 /*
  * Overide latest kfifo functions with

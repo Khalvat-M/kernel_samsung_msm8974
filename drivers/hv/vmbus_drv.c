@@ -34,6 +34,7 @@
 #include <linux/completion.h>
 #include <linux/hyperv.h>
 #include <asm/hyperv.h>
+#include <linux/random.h>
 #include "hyperv_vmbus.h"
 
 
@@ -510,6 +511,8 @@ static irqreturn_t vmbus_isr(int irq, void *dev_id)
 		handled = true;
 		tasklet_schedule(&msg_dpc);
 	}
+
+	add_interrupt_randomness(HYPERVISOR_CALLBACK_VECTOR, 0);
 
 	if (handled)
 		return IRQ_HANDLED;

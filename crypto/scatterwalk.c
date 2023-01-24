@@ -124,3 +124,47 @@ void scatterwalk_map_and_copy(void *buf, struct scatterlist *sg,
 	scatterwalk_done(&walk, out, 0);
 }
 EXPORT_SYMBOL_GPL(scatterwalk_map_and_copy);
+
+int scatterwalk_bytes_sglen(struct scatterlist *sg, int num_bytes)
+{
+	int offset = 0, n = 0;
+
+	/* num_bytes is too small */
+	if (num_bytes < sg->length)
+		return -1;
+
+	do {
+		offset += sg->length;
+		n++;
+		sg = scatterwalk_sg_next(sg);
+
+		/* num_bytes is too large */
+		if (unlikely(!sg && (num_bytes < offset)))
+			return -1;
+	} while (sg && (num_bytes > offset));
+
+	return n;
+}
+EXPORT_SYMBOL_GPL(scatterwalk_bytes_sglen);
+
+struct scatterlist *scatterwalk_ffwd(struct scatterlist dst[2],
+				     struct scatterlist *src,
+				     unsigned int len)
+{
+	for (;;) {
+		if (!len)
+			return src;
+
+		if (src->length > len)
+			break;
+
+		len -= src->length;
+		src = sg_next(src);
+	}
+
+	sg_set_page(dst, sg_page(src), src->length - len, src->offset + len);
+	scatterwalk_crypto_chain(dst, sg_next(src), 0, 2);
+
+	return dst;
+}
+EXPORT_SYMBOL_GPL(scatterwalk_ffwd);

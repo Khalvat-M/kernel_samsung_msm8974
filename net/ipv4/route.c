@@ -1391,7 +1391,7 @@ u32 ip_idents_reserve(u32 hash, int segs)
 	u32 delta = 0;
 
 	if (old != now && cmpxchg(&bucket->stamp32, old, now) == old) {
-		u64 x = random32();
+		u64 x = prandom_u32();
 
 		x *= (now - old);
 		delta = (u32)(x >> 32);
