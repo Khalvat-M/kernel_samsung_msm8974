@@ -231,6 +231,7 @@ static const struct debugfs_reg32 dwc3_regs[] = {
 	dump_register(GEVNTCOUNT(0)),
 
 	dump_register(GHWPARAMS8),
+	dump_register(GFLADJ),
 	dump_register(DCFG),
 	dump_register(DCTL),
 	dump_register(DEVTEN),
@@ -701,7 +702,7 @@ static int dwc3_ep_req_list_show(struct seq_file *s, void *unused)
 		req = list_entry(ptr, struct dwc3_request, list);
 
 		seq_printf(s,
-			"req:0x%pK len: %d sts: %d dma:0x%pKa num_sgs: %d\n",
+			"req:0x%p len: %d sts: %d dma:0x%pa num_sgs: %d\n",
 			req, req->request.length, req->request.status,
 			&req->request.dma, req->request.num_sgs);
 	}
@@ -740,7 +741,7 @@ static int dwc3_ep_queued_req_show(struct seq_file *s, void *unused)
 		req = list_entry(ptr, struct dwc3_request, list);
 
 		seq_printf(s,
-			"req:0x%pK len:%d sts:%d dma:%pKa nsg:%d trb:0x%pK\n",
+			"req:0x%p len:%d sts:%d dma:%pa nsg:%d trb:0x%p\n",
 			req, req->request.length, req->request.status,
 			&req->request.dma, req->request.num_sgs, req->trb);
 	}
@@ -780,7 +781,7 @@ static int dwc3_ep_trbs_show(struct seq_file *s, void *unused)
 		dep->name, dep->flags, dep->free_slot, dep->busy_slot);
 	for (j = 0; j < DWC3_TRB_NUM; j++) {
 		trb = &dep->trb_pool[j];
-		seq_printf(s, "trb:0x%pK bph:0x%x bpl:0x%x size:0x%x ctrl: %x\n",
+		seq_printf(s, "trb:0x%p bph:0x%x bpl:0x%x size:0x%x ctrl: %x\n",
 			trb, trb->bph, trb->bpl, trb->size, trb->ctrl);
 	}
 	spin_unlock_irqrestore(&dwc->lock, flags);
@@ -801,9 +802,9 @@ const struct file_operations dwc3_ep_trb_list_fops = {
 	.release		= single_release,
 };
 
-static unsigned int ep_addr_rxdbg_mask;
+static unsigned int ep_addr_rxdbg_mask = 1;
 module_param(ep_addr_rxdbg_mask, uint, S_IRUGO | S_IWUSR);
-static unsigned int ep_addr_txdbg_mask;
+static unsigned int ep_addr_txdbg_mask = 1;
 module_param(ep_addr_txdbg_mask, uint, S_IRUGO | S_IWUSR);
 
 /* Maximum debug message length */

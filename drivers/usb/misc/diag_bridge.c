@@ -506,10 +506,8 @@ diag_bridge_probe(struct usb_interface *ifc, const struct usb_device_id *id)
 	return 0;
 
 error:
-	if (dev) {
-		platform_device_put(dev->pdev);
+	if (dev)
 		kref_put(&dev->kref, diag_bridge_delete);
-	}
 
 	return ret;
 }

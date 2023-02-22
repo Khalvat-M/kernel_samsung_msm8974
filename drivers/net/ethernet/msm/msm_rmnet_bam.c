@@ -29,7 +29,6 @@
 #include <linux/if_arp.h>
 #include <linux/msm_rmnet.h>
 #include <linux/platform_device.h>
-#include <linux/rtnetlink.h>
 #include <net/pkt_sched.h>
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -434,9 +433,7 @@ static int __rmnet_open(struct net_device *dev)
 			return -ENODEV;
 		}
 
-		rtnl_unlock();
 		r = platform_driver_register(p->bam_pdev);
-		rtnl_lock();
 		if (r) {
 			pr_err("%s: bam pdev registration failed n=%d rc=%d\n",
 					__func__, p->ch_id, r);
@@ -713,7 +710,7 @@ static int rmnet_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 		break;
 
 	default:
-		pr_err("[%s] error: rmnet_ioct called for unsupported cmd[%d]",
+		DBG0("[%s] error: rmnet_ioct called for unsupported cmd[%d]",
 			dev->name, cmd);
 		return -EINVAL;
 	}

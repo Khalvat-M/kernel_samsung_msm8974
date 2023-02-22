@@ -37,8 +37,6 @@ struct evdev {
 	struct mutex mutex;
 	struct device dev;
 	bool exist;
-	int hw_ts_sec;
-	int hw_ts_nsec;
 };
 
 struct evdev_client {
@@ -111,20 +109,7 @@ static void evdev_event(struct input_handle *handle,
 	struct input_event event;
 	ktime_t time_mono, time_real;
 
-	if (type == EV_SYN && code == SYN_TIME_SEC) {
-		evdev->hw_ts_sec = value;
-		return;
-	}
-	if (type == EV_SYN && code == SYN_TIME_NSEC) {
-		evdev->hw_ts_nsec = value;
-		return;
-	}
-
-	if (evdev->hw_ts_sec != -1 && evdev->hw_ts_nsec != -1)
-		time_mono = ktime_set(evdev->hw_ts_sec, evdev->hw_ts_nsec);
-	else
-		time_mono = ktime_get();
-
+	time_mono = ktime_get();
 	time_real = ktime_sub(time_mono, ktime_get_monotonic_offset());
 
 	event.type = type;
@@ -143,11 +128,8 @@ static void evdev_event(struct input_handle *handle,
 
 	rcu_read_unlock();
 
-	if (type == EV_SYN && code == SYN_REPORT) {
-		evdev->hw_ts_sec = -1;
-		evdev->hw_ts_nsec = -1;
+	if (type == EV_SYN && code == SYN_REPORT)
 		wake_up_interruptible(&evdev->wait);
-	}
 }
 
 static int evdev_fasync(int fd, struct file *file, int on)
@@ -866,36 +848,6 @@ static long evdev_do_ioctl(struct file *file, unsigned int cmd,
 						_IOC_NR(cmd) & EV_MAX, size,
 						p, compat_mode);
 
-#ifdef CONFIG_INPUT_EXPANDED_ABS
-		if ((EVIOCGABS_CHG_LIMIT(_IOC_NR(cmd)) & ~(EVIOCGABS_CHG_LIMIT(EVIOCGABS_LIMIT) - 1))
-			== EVIOCGABS_CHG_LIMIT(_IOC_NR(EVIOCGABS(0)))) {
-
-			if (!dev->absinfo)
-				return -EINVAL;
-
-			t = EVIOCGABS_CHG_LIMIT(_IOC_NR(cmd)) & (EVIOCGABS_CHG_LIMIT(EVIOCGABS_LIMIT) - 1);
-			abs = dev->absinfo[t];
-
-			if (copy_to_user(p, &abs, min_t(size_t,
-					size, sizeof(struct input_absinfo))))
-				return -EFAULT;
-
-			return 0;
-		} else if ((_IOC_NR(cmd) & ~(EVIOCGABS_LIMIT - 1)) == _IOC_NR(EVIOCGABS(0))) {
-
-			if (!dev->absinfo)
-				return -EINVAL;
-
-			t = _IOC_NR(cmd) & (EVIOCGABS_LIMIT - 1);
-			abs = dev->absinfo[t];
-
-			if (copy_to_user(p, &abs, min_t(size_t,
-					size, sizeof(struct input_absinfo))))
-				return -EFAULT;
-
-			return 0;
-		}
-#else
 		if ((_IOC_NR(cmd) & ~ABS_MAX) == _IOC_NR(EVIOCGABS(0))) {
 
 			if (!dev->absinfo)
@@ -910,7 +862,6 @@ static long evdev_do_ioctl(struct file *file, unsigned int cmd,
 
 			return 0;
 		}
-#endif
 	}
 
 	if (_IOC_DIR(cmd) == _IOC_WRITE) {
@@ -1080,8 +1031,6 @@ static int evdev_connect(struct input_handler *handler, struct input_dev *dev,
 	dev_set_name(&evdev->dev, "event%d", minor);
 	evdev->exist = true;
 	evdev->minor = minor;
-	evdev->hw_ts_sec = -1;
-	evdev->hw_ts_nsec = -1;
 
 	evdev->handle.dev = input_get_device(dev);
 	evdev->handle.name = dev_name(&evdev->dev);

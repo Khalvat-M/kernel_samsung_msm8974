@@ -24,6 +24,7 @@
 *.order
 modules.builtin
 *.elf
+*.bin
 *.gz
 *.bz2
 *.lzma
@@ -84,5 +85,5 @@ GTAGS
 *~
 \#*#
 
-# Generated firmware files
-firmware/epen/*.bin
+# Generated source files
+smd_rpc_sym.c

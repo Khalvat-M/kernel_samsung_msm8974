@@ -758,8 +758,7 @@ int gpio_export(unsigned gpio, bool direction_may_change)
 				__func__, gpio,
 				test_bit(FLAG_REQUESTED, &desc->flags),
 				test_bit(FLAG_EXPORT, &desc->flags));
-		status = -EPERM;
-		goto fail_unlock;
+		return -EPERM;
 	}
 
 	if (desc->chip->direction_input && desc->chip->direction_output &&
@@ -1104,16 +1103,18 @@ int gpiochip_add(struct gpio_chip *chip)
 				? (1 << FLAG_IS_OUT)
 				: 0;
 		}
+	}
+
+	spin_unlock_irqrestore(&gpio_lock, flags);
+
+	if (status)
+		goto fail;
 
 #ifdef CONFIG_PINCTRL
 	INIT_LIST_HEAD(&chip->pin_ranges);
 #endif
 
-		of_gpiochip_add(chip);
-	}
-
-unlock:
-	spin_unlock_irqrestore(&gpio_lock, flags);
+	of_gpiochip_add(chip);
 
 	status = gpiochip_export(chip);
 	if (status) {
@@ -1126,6 +1127,9 @@ unlock:
 		chip->label ? : "generic");
 
 	return 0;
+
+unlock:
+	spin_unlock_irqrestore(&gpio_lock, flags);
 fail:
 	/* failures here can mean systems won't boot... */
 	pr_err("gpiochip_add: gpios %d..%d (%s) failed to register\n",

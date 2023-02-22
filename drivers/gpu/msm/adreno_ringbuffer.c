@@ -1,4 +1,5 @@
-/* Copyright (c) 2002,2007-2014,2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2002,2007-2014,2016, The Linux Foundation. All rights
+ * reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1003,8 +1004,8 @@ static bool _parse_ibs(struct kgsl_device_private *dev_priv,
 			cur_ret = _handle_type3(dev_priv, hostaddr);
 			break;
 		default:
-			KGSL_CMD_ERR(dev_priv->device, "unexpected type: "
-				"type:%d, word:0x%08x @ 0x%pK, gpu:0x%08x\n",
+			KGSL_CMD_ERR(dev_priv->device,
+				"unexpected type: type:%d, word:0x%08x @ 0x%pK, gpu:0x%08x\n",
 				*hostaddr >> 30, *hostaddr, hostaddr,
 				gpuaddr+4*(sizedwords-dwords_left));
 			cur_ret = false;

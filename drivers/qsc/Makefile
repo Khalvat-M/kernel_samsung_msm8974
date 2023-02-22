@@ -1,1 +1,0 @@
-obj-$(CONFIG_MACH_BAFFIN2_SGLTE) += mdm2.o mdm_common.o

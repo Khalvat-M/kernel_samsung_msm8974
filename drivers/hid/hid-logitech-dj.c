@@ -714,7 +714,13 @@ static int logi_dj_raw_event(struct hid_device *hdev,
 
 	if ((dj_report->device_index < DJ_DEVICE_INDEX_MIN) ||
 	    (dj_report->device_index > DJ_DEVICE_INDEX_MAX)) {
-		dev_err(&hdev->dev, "%s: invalid device index:%d\n",
+		/*
+		 * Device index is wrong, bail out.
+		 * This driver can ignore safely the receiver notifications,
+		 * so ignore those reports too.
+		 */
+		if (dj_report->device_index != DJ_RECEIVER_INDEX)
+			dev_err(&hdev->dev, "%s: invalid device index:%d\n",
 				__func__, dj_report->device_index);
 		return false;
 	}

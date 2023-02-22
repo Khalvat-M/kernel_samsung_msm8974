@@ -19,7 +19,6 @@
 #define _LINUX_NET_H
 
 #include <linux/socket.h>
-#include <linux/sched.h>
 #include <asm/socket.h>
 
 #define NPROTO		AF_MAX

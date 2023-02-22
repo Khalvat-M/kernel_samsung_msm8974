@@ -16,7 +16,6 @@
 #include "mdss_mdp.h"
 #include "mdss_mdp_rotator.h"
 #include "mdss_panel.h"
-#include <linux/pm_runtime.h>
 
 #define VBIF_WR_LIM_CONF    0xC0
 #define MDSS_DEFAULT_OT_SETTING    0x10
@@ -383,9 +382,6 @@ static int mdss_mdp_writeback_stop(struct mdss_mdp_ctl *ctl)
 
 		ctl->priv_data = NULL;
 		ctx->ref_cnt--;
-		
-		if(ctl->mdata != NULL)
-				pm_runtime_put_sync(&ctl->mdata->pdev->dev);
 	}
 
 	return 0;
@@ -441,10 +437,6 @@ static int mdss_mdp_wb_wait4comp(struct mdss_mdp_ctl *ctl, void *arg)
 		rc = -ENODEV;
 		WARN(1, "writeback kickoff timed out (%d) ctl=%d\n",
 						rc, ctl->num);
-#if defined (CONFIG_FB_MSM_MDSS_DSI_DBG)
-		mdp5_dump_regs();
-		xlog_dump();
-#endif
 	} else {
 		mdss_mdp_ctl_notify(ctl, MDP_NOTIFY_FRAME_DONE);
 		rc = 0;
@@ -453,9 +445,6 @@ static int mdss_mdp_wb_wait4comp(struct mdss_mdp_ctl *ctl, void *arg)
 	mdss_iommu_ctrl(0);
 	mdss_bus_bandwidth_ctrl(false);
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false); /* clock off */
-
-	/* Set flag to release Controller Bandwidth */
-	ctl->perf_release_ctl_bw = true;
 
 	ctx->comp_cnt--;
 
@@ -545,9 +534,6 @@ int mdss_mdp_writeback_start(struct mdss_mdp_ctl *ctl)
 			return -EBUSY;
 		}
 		ctx->ref_cnt++;
-		/* Stop PM Runtime to switch off MDP Regulator during Writeback */
-		if(ctl->mdata != NULL)	
-			pm_runtime_get_sync(&ctl->mdata->pdev->dev);
 	} else {
 		pr_err("invalid writeback mode %d\n", mem_sel);
 		return -EINVAL;
@@ -569,8 +555,7 @@ int mdss_mdp_writeback_start(struct mdss_mdp_ctl *ctl)
 	ctl->wait_fnc = mdss_mdp_wb_wait4comp;
 	ctl->add_vsync_handler = mdss_mdp_wb_add_vsync_handler;
 	ctl->remove_vsync_handler = mdss_mdp_wb_remove_vsync_handler;
-	ctl->wait_video_pingpong = NULL;
-	
+
 	return ret;
 }
 

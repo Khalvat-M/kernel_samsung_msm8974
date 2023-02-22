@@ -147,9 +147,6 @@ extern unsigned long nr_uninterruptible(void);
 extern unsigned long nr_iowait(void);
 extern unsigned long nr_iowait_cpu(int cpu);
 extern unsigned long this_cpu_load(void);
-#ifdef CONFIG_RUNTIME_COMPCACHE
-extern unsigned long this_cpu_loadx(int i);
-#endif /* CONFIG_RUNTIME_COMPCACHE */
 
 extern void sched_update_nr_prod(int cpu, unsigned long nr, bool inc);
 extern void sched_get_nr_running_avg(int *avg, int *iowait_avg);
@@ -685,9 +682,6 @@ struct signal_struct {
 	struct mutex cred_guard_mutex;	/* guard against foreign influences on
 					 * credential calculations
 					 * (notably. ptrace) */
-#ifdef CONFIG_SAMP_HOTNESS
-	int hotness_adj;
-#endif
 };
 
 /* Context switch must be unlocked if interrupts are to be enabled */
@@ -740,7 +734,7 @@ struct user_struct {
 	unsigned long mq_bytes;	/* How many bytes can be allocated to mqueue? */
 #endif
 	unsigned long locked_shm; /* How many pages of mlocked shm ? */
-	unsigned long unix_inflight;	/* How many files in flight in unix sockets */
+	unsigned long unix_inflight; /* How many files in flight in unix sockets */
 	atomic_long_t pipe_bufs;  /* how many pages are allocated in pipe buffers */
 
 #ifdef CONFIG_KEYS
@@ -1747,15 +1741,13 @@ static inline pid_t task_tgid_nr(struct task_struct *tsk)
 	return tsk->tgid;
 }
 
-static inline pid_t task_tgid_nr_ns(struct task_struct *tsk, struct pid_namespace *ns)
-{
-	return __task_pid_nr_ns(tsk, __PIDTYPE_TGID, ns);
-}
+pid_t task_tgid_nr_ns(struct task_struct *tsk, struct pid_namespace *ns);
 
 static inline pid_t task_tgid_vnr(struct task_struct *tsk)
 {
-	return __task_pid_nr_ns(tsk, __PIDTYPE_TGID, NULL);
+	return pid_vnr(task_tgid(tsk));
 }
+
 
 static inline pid_t task_pgrp_nr_ns(struct task_struct *tsk,
 					struct pid_namespace *ns)
@@ -1893,19 +1885,9 @@ extern int task_free_unregister(struct notifier_block *n);
 #define used_math() tsk_used_math(current)
 
 /* Per-process atomic flags. */
+#define PFA_NO_NEW_PRIVS 0      /* May not gain new privileges. */
 #define PFA_SPREAD_PAGE  1      /* Spread page cache over cpuset */
 #define PFA_SPREAD_SLAB  2      /* Spread some slab caches over cpuset */
-#define PFA_NO_NEW_PRIVS 0x00000001	/* May not gain new privileges. */
-
-#define TASK_PFA_TEST(name, func)					\
-	static inline bool task_##func(struct task_struct *p)		\
-	{ return test_bit(PFA_##name, &p->atomic_flags); }
-#define TASK_PFA_SET(name, func)					\
-	static inline void task_set_##func(struct task_struct *p)	\
-	{ set_bit(PFA_##name, &p->atomic_flags); }
-#define TASK_PFA_CLEAR(name, func)					\
-	static inline void task_clear_##func(struct task_struct *p)	\
-	{ clear_bit(PFA_##name, &p->atomic_flags); }
 
 static inline bool task_no_new_privs(struct task_struct *p)
 {
@@ -1916,6 +1898,16 @@ static inline void task_set_no_new_privs(struct task_struct *p)
 {
 	set_bit(PFA_NO_NEW_PRIVS, &p->atomic_flags);
 }
+
+#define TASK_PFA_TEST(name, func)					\
+	static inline bool task_##func(struct task_struct *p)		\
+	{ return test_bit(PFA_##name, &p->atomic_flags); }
+#define TASK_PFA_SET(name, func)					\
+	static inline void task_set_##func(struct task_struct *p)	\
+	{ set_bit(PFA_##name, &p->atomic_flags); }
+#define TASK_PFA_CLEAR(name, func)					\
+	static inline void task_clear_##func(struct task_struct *p)	\
+	{ clear_bit(PFA_##name, &p->atomic_flags); }
 
 /*
  * task->jobctl flags

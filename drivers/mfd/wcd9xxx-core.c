@@ -799,22 +799,6 @@ static int wcd9xxx_init_supplies(struct wcd9xxx *wcd9xxx,
 			goto err_get;
 		}
 
-		/* Enabling Codec Buck Voltage to avoid voltage swing from 1.8 - 2.1V during sleep */
-		if(strcmp("cdc-vdd-buck",wcd9xxx->supplies[i].supply) == 0)
-		{
-			ret = regulator_enable(wcd9xxx->supplies[i].consumer);
-			if (ret) {
-				pr_err("%s: Setting regulator voltage failed for "
-					"regulator %s err = %d\n", __func__,
-					wcd9xxx->supplies[i].supply, ret);
-				goto err_get;
-			} else {
-				pr_err("%s: Setting regulator voltage success for "
-					"regulator %s err = %d\n", __func__,
-					wcd9xxx->supplies[i].supply, ret);
-			}
-		}
-
 		ret = regulator_set_optimum_mode(wcd9xxx->supplies[i].consumer,
 						pdata->regulator[i].optimum_uA);
 		if (ret < 0) {
@@ -1077,13 +1061,13 @@ static int __devinit wcd9xxx_i2c_probe(struct i2c_client *client,
 		if (!pdata) {
 			dev_dbg(&client->dev, "no platform data?\n");
 			ret = -EINVAL;
-			goto err_codec;
+			goto fail;
 		}
 		if (i2c_check_functionality(client->adapter,
 					    I2C_FUNC_I2C) == 0) {
 			dev_dbg(&client->dev, "can't talk I2C?\n");
 			ret = -EIO;
-			goto err_codec;
+			goto fail;
 		}
 		dev_set_drvdata(&client->dev, wcd9xxx);
 		wcd9xxx->dev = &client->dev;
@@ -1639,11 +1623,11 @@ static int wcd9xxx_slim_probe(struct slim_device *slim)
 		("wcd9310_slimbus_interface_device", 0);
 	if (!IS_ERR(debugfs_wcd9xxx_dent)) {
 		debugfs_peek = debugfs_create_file("peek",
-		S_IFREG | S_IRUSR, debugfs_wcd9xxx_dent,
+		S_IFREG | S_IRUGO, debugfs_wcd9xxx_dent,
 		(void *) "peek", &codec_debug_ops);
 
 		debugfs_poke = debugfs_create_file("poke",
-		S_IFREG | S_IRUSR, debugfs_wcd9xxx_dent,
+		S_IFREG | S_IRUGO, debugfs_wcd9xxx_dent,
 		(void *) "poke", &codec_debug_ops);
 	}
 #endif

@@ -53,7 +53,7 @@ static int simple_delete_dentry(const struct dentry *dentry)
  * Lookup the data. This is trivial - if the dentry didn't already
  * exist, we know it is negative.  Set d_op to delete negative dentries.
  */
-struct dentry *simple_lookup(struct inode *dir, struct dentry *dentry, struct nameidata *nd)
+struct dentry *simple_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags)
 {
 	static const struct dentry_operations simple_dentry_operations = {
 		.d_delete = simple_delete_dentry,
@@ -68,7 +68,7 @@ struct dentry *simple_lookup(struct inode *dir, struct dentry *dentry, struct na
 
 int dcache_dir_open(struct inode *inode, struct file *file)
 {
-	static struct qstr cursor_name = {.len = 1, .name = "."};
+	static struct qstr cursor_name = QSTR_INIT(".", 1);
 
 	file->private_data = d_alloc(file->f_path.dentry, &cursor_name);
 
@@ -225,7 +225,7 @@ struct dentry *mount_pseudo(struct file_system_type *fs_type, char *name,
 	struct super_block *s = sget(fs_type, NULL, set_anon_super, NULL);
 	struct dentry *dentry;
 	struct inode *root;
-	struct qstr d_name = {.name = name, .len = strlen(name)};
+	struct qstr d_name = QSTR_INIT(name, strlen(name));
 
 	if (IS_ERR(s))
 		return ERR_CAST(s);

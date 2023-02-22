@@ -47,7 +47,7 @@ int wfd_stats_init(struct wfd_stats *stats, int device)
 	if (!stats) {
 		rc = -EINVAL;
 		goto wfd_stats_init_fail;
-	} else if (!wfd_debugfs_root || wfd_debugfs_root == ERR_PTR(-ENODEV)) {
+	} else if (!wfd_debugfs_root) {
 		WFD_MSG_ERR("wfd debugfs root does not exist\n");
 		rc = -ENOENT;
 		goto wfd_stats_init_fail;

@@ -33,7 +33,11 @@
 #include <linux/sysfs.h>
 #include <linux/types.h>
 #include <linux/io.h>
-#include <linux/hrtimer.h>
+#ifdef CONFIG_ANDROID_INTF_ALARM_DEV
+#include <linux/alarmtimer.h>
+#else
+#include <linux/android_alarm.h>
+#endif
 #include <linux/thermal.h>
 #include <mach/rpm-regulator.h>
 #include <mach/rpm-regulator-smd.h>
@@ -53,12 +57,11 @@
 
 static struct msm_thermal_data msm_thermal_info;
 static struct delayed_work check_temp_work;
-static struct delayed_work temp_log_work;
 static bool core_control_enabled;
 static uint32_t cpus_offlined;
 static DEFINE_MUTEX(core_control_mutex);
 static uint32_t wakeup_ms;
-static struct hrtimer thermal_rtc_hrtimer;
+static struct alarm thermal_rtc;
 static struct kobject *tt_kobj;
 static struct kobject *cc_kobj;
 static struct work_struct timer_work;
@@ -821,11 +824,8 @@ static int msm_thermal_get_freq_table(void)
 
 	while (table[i].frequency != CPUFREQ_TABLE_END)
 		i++;
-//#ifdef CONFIG_SEC_PM
-//	limit_idx_low = 7;
-//#else
+
 	limit_idx_low = 0;
-//#endif
 	limit_idx_high = limit_idx = i - 1;
 	BUG_ON(limit_idx_high <= 0 || limit_idx_high <= limit_idx_low);
 fail:
@@ -1310,11 +1310,6 @@ static void __ref do_freq_control(long temp)
 		if (limit_idx < limit_idx_low)
 			limit_idx = limit_idx_low;
 		max_freq = table[limit_idx].frequency;
-
-#ifdef CONFIG_SEC_PM_DEBUG
-		pr_info("%s: down Limit=%d Temp: %ld\n",
-				KBUILD_MODNAME, limit_idx, temp);
-#endif
 	} else if (temp < msm_thermal_info.limit_temp_degC -
 		 msm_thermal_info.temp_hysteresis_degC) {
 		if (limit_idx == limit_idx_high)
@@ -1326,11 +1321,6 @@ static void __ref do_freq_control(long temp)
 			max_freq = UINT_MAX;
 		} else
 			max_freq = table[limit_idx].frequency;
-
-#ifdef CONFIG_SEC_PM_DEBUG
-		pr_info("%s: up Limit=%d Temp: %ld\n",
-				KBUILD_MODNAME, limit_idx, temp);
-#endif
 	}
 
 	if (max_freq == cpus[cpu].limited_max_freq)
@@ -1384,32 +1374,6 @@ reschedule:
 				msecs_to_jiffies(msm_thermal_info.poll_ms));
 }
 
-
-static void __ref msm_therm_temp_log(struct work_struct *work)
-{
-
-	struct tsens_device tsens_dev;
-	long temp =  0;
-	int i, added = 0, ret = 0;
-	uint32_t max_sensors = 0;
-	char buffer[500];
-
-	if(!tsens_get_max_sensor_num(&max_sensors))
-	{
-		pr_info( "Debug Temp for Sensor: ");
-		for(i=0;i<max_sensors;i++)
-		{
-			tsens_dev.sensor_num = i;
-			tsens_get_temp(&tsens_dev, &temp);
-			ret = sprintf(buffer + added, "(%d --- %ld)", i, temp);
-			added += ret;						
-		}
-		pr_info("%s", buffer);
-	}
-	schedule_delayed_work(&temp_log_work,
-				HZ*5); //For every 5 seconds log the temperature values of all the msm thermistors.
-}
-
 static int __ref msm_thermal_cpu_callback(struct notifier_block *nfb,
 		unsigned long action, void *hcpu)
 {
@@ -1436,20 +1400,29 @@ static struct notifier_block __refdata msm_thermal_cpu_notifier = {
 static void thermal_rtc_setup(void)
 {
 	ktime_t wakeup_time;
+
+#ifdef CONFIG_ANDROID_INTF_ALARM_DEV
+	wakeup_time = ns_to_ktime((u64)wakeup_ms * NSEC_PER_MSEC);
+	alarm_start_relative(&thermal_rtc, wakeup_time);
+	pr_debug("%s: Alarm set to last for %ld.%06ld sec\n",
+			KBUILD_MODNAME,
+			ktime_to_timeval(wakeup_time).tv_sec,
+			ktime_to_timeval(wakeup_time).tv_usec);
+#else
 	ktime_t curr_time;
 
-	curr_time = ktime_get_boottime();
+	curr_time = alarm_get_elapsed_realtime();
 	wakeup_time = ktime_add_us(curr_time,
 			(wakeup_ms * USEC_PER_MSEC));
-	hrtimer_start_range_ns(&thermal_rtc_hrtimer, wakeup_time,
-			ULONG_MAX, HRTIMER_MODE_ABS);
+	alarm_start_range(&thermal_rtc, wakeup_time,
+			wakeup_time);
 	pr_debug("%s: Current Time: %ld %ld, Alarm set to: %ld %ld\n",
 			KBUILD_MODNAME,
 			ktime_to_timeval(curr_time).tv_sec,
 			ktime_to_timeval(curr_time).tv_usec,
 			ktime_to_timeval(wakeup_time).tv_sec,
 			ktime_to_timeval(wakeup_time).tv_usec);
-
+#endif
 }
 
 static void timer_work_fn(struct work_struct *work)
@@ -1457,16 +1430,29 @@ static void timer_work_fn(struct work_struct *work)
 	sysfs_notify(tt_kobj, NULL, "wakeup_ms");
 }
 
-enum hrtimer_restart thermal_rtc_callback(struct hrtimer *timer)
+#ifdef CONFIG_ANDROID_INTF_ALARM_DEV
+static enum alarmtimer_restart thermal_rtc_callback(struct alarm *al,
+	ktime_t now)
 {
-	struct timespec ts;
-	get_monotonic_boottime(&ts);
+	struct timeval ts;
+	ts = ktime_to_timeval(now);
+
 	schedule_work(&timer_work);
 	pr_debug("%s: Time on alarm expiry: %ld %ld\n", KBUILD_MODNAME,
-			ts.tv_sec, ts.tv_nsec / 1000);
+			ts.tv_sec, ts.tv_usec);
 
-	return HRTIMER_NORESTART;
+	return ALARMTIMER_NORESTART;
 }
+#else
+static void thermal_rtc_callback(struct alarm *al)
+{
+	struct timeval ts;
+	ts = ktime_to_timeval(alarm_get_elapsed_realtime());
+	schedule_work(&timer_work);
+	pr_debug("%s: Time on alarm expiry: %ld %ld\n", KBUILD_MODNAME,
+			ts.tv_sec, ts.tv_usec);
+}
+#endif
 
 static int hotplug_notify(enum thermal_trip_type type, int temp, void *data)
 {
@@ -1964,9 +1950,6 @@ static void __ref disable_msm_thermal(void)
 	uint32_t cpu = 0;
 
 	/* make sure check_temp is no longer running */
-	/* kor_ts@sec
-	 * flush_scheduled_work () should be avoided.
-	 */
 	cancel_delayed_work_sync(&check_temp_work);
 
 	get_online_cpus();
@@ -2142,7 +2125,7 @@ static ssize_t store_wakeup_ms(struct kobject *kobj,
 		pr_debug("%s: Timer started for %ums\n", KBUILD_MODNAME,
 				wakeup_ms);
 	} else {
-		ret = hrtimer_cancel(&thermal_rtc_hrtimer);
+		ret = alarm_cancel(&thermal_rtc);
 		if (ret)
 			pr_debug("%s: Timer canceled\n", KBUILD_MODNAME);
 		else
@@ -3315,17 +3298,11 @@ static int __devinit msm_thermal_dev_probe(struct platform_device *pdev)
 	 * Need to make sure sysfs node is created again
 	 */
 	if (psm_nodes_called) {
-		ret = msm_thermal_add_psm_nodes();
-		if (ret)
-			pr_err("%s:%d msm_thermal_add_psm_nodes err",
-					__func__, __LINE__);
+		msm_thermal_add_psm_nodes();
 		psm_nodes_called = false;
 	}
 	if (vdd_rstr_nodes_called) {
-		ret = msm_thermal_add_vdd_rstr_nodes();
-		if (ret)
-			pr_err("%s:%d msm_thermal_add_vdd_rstr_nodes err",
-					__func__, __LINE__);
+		msm_thermal_add_vdd_rstr_nodes();
 		vdd_rstr_nodes_called = false;
 	}
 	if (ocr_nodes_called) {
@@ -3363,7 +3340,6 @@ static int msm_thermal_dev_exit(struct platform_device *inp_dev)
 		kfree(thresh);
 		thresh = NULL;
 	}
-	cancel_delayed_work_sync(&temp_log_work);
 	return 0;
 }
 
@@ -3384,9 +3360,6 @@ static struct platform_driver msm_thermal_device_driver = {
 
 int __init msm_thermal_device_init(void)
 {
-	INIT_DELAYED_WORK(&temp_log_work, msm_therm_temp_log);
-	schedule_delayed_work(&temp_log_work, HZ*2);
-
 	return platform_driver_register(&msm_thermal_device_driver);
 }
 
@@ -3398,11 +3371,12 @@ int __init msm_thermal_late_init(void)
 	msm_thermal_add_vdd_rstr_nodes();
 	msm_thermal_add_ocr_nodes();
 	msm_thermal_add_default_temp_limit_nodes();
-	hrtimer_init(&thermal_rtc_hrtimer,
-			CLOCK_BOOTTIME,
-			HRTIMER_MODE_ABS);
-	thermal_rtc_hrtimer.function=
-			&thermal_rtc_callback;
+#ifdef CONFIG_ANDROID_INTF_ALARM_DEV
+	alarm_init(&thermal_rtc, ALARM_BOOTTIME, thermal_rtc_callback);
+#else
+	alarm_init(&thermal_rtc, ANDROID_ALARM_ELAPSED_REALTIME_WAKEUP,
+			thermal_rtc_callback);
+#endif
 	INIT_WORK(&timer_work, timer_work_fn);
 	msm_thermal_add_timer_nodes();
 

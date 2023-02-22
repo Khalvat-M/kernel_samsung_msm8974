@@ -730,17 +730,8 @@ static int shmem_writepage(struct page *page, struct writeback_control *wbc)
 	info = SHMEM_I(inode);
 	if (info->flags & VM_LOCKED)
 		goto redirty;
-#ifdef CONFIG_RUNTIME_COMPCACHE
-	/*
-	 * Modification for runtime compcache
-	 * shmem_writepage can be reason of kernel panic when using swap.
-	 * This modification prevent using swap by shmem.
-	 */
-	goto redirty;
-#else
 	if (!total_swap_pages)
 		goto redirty;
-#endif /* CONFIG_RUNTIME_COMPCACHE */
 
 	/*
 	 * shmem_backing_dev_info's capabilities prevent regular writeback or
@@ -1241,18 +1232,6 @@ out_nomem:
 static int shmem_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	file_accessed(file);
-#ifdef CONFIG_TIMA_RKP
-	if (vma->vm_end - vma->vm_start) {
-		/* iommu optimization- needs to be turned ON from
-		* the tz side.
-		*/
-		cpu_v7_tima_iommu_opt(vma->vm_start, vma->vm_end, (unsigned long)vma->vm_mm->pgd);
-		__asm__ __volatile__ (
-		"mcr    p15, 0, r0, c8, c3, 0\n"
-		"dsb\n"
-		"isb\n");
-	}
-#endif
 	vma->vm_ops = &shmem_vm_ops;
 	vma->vm_flags |= VM_CAN_NONLINEAR;
 	return 0;
@@ -1663,6 +1642,37 @@ shmem_mknod(struct inode *dir, struct dentry *dentry, umode_t mode, dev_t dev)
 	return error;
 }
 
+static int
+shmem_tmpfile(struct inode *dir, struct dentry *dentry, umode_t mode)
+{
+	struct inode *inode;
+	int error = -ENOSPC;
+
+	inode = shmem_get_inode(dir->i_sb, dir, mode, 0, VM_NORESERVE);
+	if (inode) {
+		error = security_inode_init_security(inode, dir,
+						     NULL,
+						     shmem_initxattrs, NULL);
+		if (error) {
+			if (error != -EOPNOTSUPP) {
+				iput(inode);
+				return error;
+			}
+		}
+#ifdef CONFIG_TMPFS_POSIX_ACL
+		error = generic_acl_init(inode, dir);
+		if (error) {
+			iput(inode);
+			return error;
+		}
+#else
+		error = 0;
+#endif
+		d_tmpfile(dentry, inode);
+	}
+	return error;
+}
+
 static int shmem_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
 {
 	int error;
@@ -1674,7 +1684,7 @@ static int shmem_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
 }
 
 static int shmem_create(struct inode *dir, struct dentry *dentry, umode_t mode,
-		struct nameidata *nd)
+		bool excl)
 {
 	return shmem_mknod(dir, dentry, mode | S_IFREG, 0);
 }
@@ -2540,6 +2550,7 @@ static const struct inode_operations shmem_dir_inode_operations = {
 	.rmdir		= shmem_rmdir,
 	.mknod		= shmem_mknod,
 	.rename		= shmem_rename,
+	.tmpfile	= shmem_tmpfile,
 #endif
 #ifdef CONFIG_TMPFS_XATTR
 	.setxattr	= shmem_setxattr,

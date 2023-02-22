@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2009, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2008-2009,2016 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -176,7 +176,7 @@ static int dma_test_open(struct inode *inode, struct file *file)
 	 * waste 32 bytes for each. */
 
 	/* Allocate the command pointer. */
-	priv->command_ptr = kmalloc(sizeof(*priv->command_ptr),
+	priv->command_ptr = kmalloc(sizeof(&priv->command_ptr),
 				    GFP_KERNEL | __GFP_DMA);
 	if (priv->command_ptr == NULL) {
 		kfree(priv);

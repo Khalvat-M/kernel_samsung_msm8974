@@ -513,7 +513,6 @@ static long ipa_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			break;
 		}
 		break;
-
 	case IPA_IOC_COMMIT_HDR:
 		retval = ipa_commit_hdr();
 		break;

@@ -25,10 +25,6 @@
 #include <asm/siginfo.h>
 #include <asm/uaccess.h>
 
-#ifdef CONFIG_SEC_FILE_LEAK_DEBUG
-extern void	sec_debug_EMFILE_error_proc(unsigned long files_addr);
-#endif
-
 void set_close_on_exec(unsigned int fd, int flag)
 {
 	struct files_struct *files = current->files;
@@ -66,13 +62,6 @@ SYSCALL_DEFINE3(dup3, unsigned int, oldfd, unsigned int, newfd, int, flags)
 
 	if (unlikely(oldfd == newfd))
 		return -EINVAL;
-
-	if (newfd >= rlimit(RLIMIT_NOFILE)) {
-#ifdef CONFIG_SEC_FILE_LEAK_DEBUG
-		sec_debug_EMFILE_error_proc((unsigned long)files);
-#endif
-		return -EMFILE;
-	}
 
 	spin_lock(&files->file_lock);
 	err = expand_files(files, newfd);
@@ -846,14 +835,14 @@ static int __init fcntl_init(void)
 	 * Exceptions: O_NONBLOCK is a two bit define on parisc; O_NDELAY
 	 * is defined as O_NONBLOCK on some platforms and not on others.
 	 */
-	BUILD_BUG_ON(19 - 1 /* for O_RDONLY being 0 */ != HWEIGHT32(
+	BUILD_BUG_ON(20 - 1 /* for O_RDONLY being 0 */ != HWEIGHT32(
 		O_RDONLY	| O_WRONLY	| O_RDWR	|
 		O_CREAT		| O_EXCL	| O_NOCTTY	|
 		O_TRUNC		| O_APPEND	| /* O_NONBLOCK	| */
 		__O_SYNC	| O_DSYNC	| FASYNC	|
 		O_DIRECT	| O_LARGEFILE	| O_DIRECTORY	|
 		O_NOFOLLOW	| O_NOATIME	| O_CLOEXEC	|
-		__FMODE_EXEC	| O_PATH
+		__FMODE_EXEC	| O_PATH	| __O_TMPFILE
 		));
 
 	fasync_cache = kmem_cache_create("fasync_cache",

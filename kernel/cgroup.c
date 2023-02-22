@@ -373,6 +373,45 @@ static struct hlist_head *css_set_hash(struct cgroup_subsys_state *css[])
 	return &css_set_table[index];
 }
 
+static void free_css_set_work(struct work_struct *work)
+{
+	struct css_set *cg = container_of(work, struct css_set, work);
+	struct cg_cgroup_link *link;
+	struct cg_cgroup_link *saved_link;
+
+	write_lock(&css_set_lock);
+	list_for_each_entry_safe(link, saved_link, &cg->cg_links,
+				 cg_link_list) {
+		struct cgroup *cgrp = link->cgrp;
+		list_del(&link->cg_link_list);
+		list_del(&link->cgrp_link_list);
+		/*
+		 * We may not be holding cgroup_mutex, and if cgrp->count is
+		 * dropped to 0 the cgroup can be destroyed at any time, hence
+		 * rcu_read_lock is used to keep it alive.
+		 */
+		rcu_read_lock();
+		if (atomic_dec_and_test(&cgrp->count)) {
+			check_for_release(cgrp);
+			cgroup_wakeup_rmdir_waiter(cgrp);
+		}
+		rcu_read_unlock();
+
+		kfree(link);
+	}
+	write_unlock(&css_set_lock);
+
+	kfree(cg);
+}
+
+static void free_css_set_rcu(struct rcu_head *obj)
+{
+	struct css_set *cg = container_of(obj, struct css_set, rcu_head);
+
+	INIT_WORK(&cg->work, free_css_set_work);
+	schedule_work(&cg->work);
+}
+
 /* We don't maintain the lists running through each css_set to its
  * task until after the first call to cgroup_iter_start(). This
  * reduces the fork()/exit() overhead for people who have cgroups
@@ -389,9 +428,6 @@ static inline void get_css_set(struct css_set *cg)
 
 static void put_css_set(struct css_set *cg)
 {
-	struct cg_cgroup_link *link;
-	struct cg_cgroup_link *saved_link;
-
 	/*
 	 * Ensure that the refcount doesn't hit zero while any readers
 	 * can see it. Similar to atomic_dec_and_lock(), but for an
@@ -408,28 +444,8 @@ static void put_css_set(struct css_set *cg)
 	hlist_del(&cg->hlist);
 	css_set_count--;
 
-	list_for_each_entry_safe(link, saved_link, &cg->cg_links,
-				 cg_link_list) {
-		struct cgroup *cgrp = link->cgrp;
-		list_del(&link->cg_link_list);
-		list_del(&link->cgrp_link_list);
-
-		/*
-		 * We may not be holding cgroup_mutex, and if cgrp->count is
-		 * dropped to 0 the cgroup can be destroyed at any time, hence
-		 * rcu_read_lock is used to keep it alive.
-		 */
-		rcu_read_lock();
-		if (atomic_dec_and_test(&cgrp->count)) {
-			check_for_release(cgrp);
-			cgroup_wakeup_rmdir_waiter(cgrp);
-		}
-		rcu_read_unlock();
-
-		kfree(link);
-	}
 	write_unlock(&css_set_lock);
-	kfree_rcu(cg, rcu_head);
+	call_rcu(&cg->rcu_head, free_css_set_rcu);
 }
 
 /*
@@ -800,7 +816,7 @@ EXPORT_SYMBOL_GPL(cgroup_unlock);
  */
 
 static int cgroup_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode);
-static struct dentry *cgroup_lookup(struct inode *, struct dentry *, struct nameidata *);
+static struct dentry *cgroup_lookup(struct inode *, struct dentry *, unsigned int);
 static int cgroup_rmdir(struct inode *unused_dir, struct dentry *dentry);
 static int cgroup_populate_dir(struct cgroup *cgrp);
 static const struct inode_operations cgroup_dir_inode_operations;
@@ -2108,6 +2124,7 @@ static int cgroup_attach_proc(struct cgroup *cgrp, struct task_struct *leader)
 	/*
 	 * step 5: success! and cleanup
 	 */
+	synchronize_rcu();
 	cgroup_wakeup_rmdir_waiter(cgrp);
 	retval = 0;
 out_put_css_set_refs:
@@ -2527,7 +2544,7 @@ static const struct inode_operations cgroup_dir_inode_operations = {
 	.rename = cgroup_rename,
 };
 
-static struct dentry *cgroup_lookup(struct inode *dir, struct dentry *dentry, struct nameidata *nd)
+static struct dentry *cgroup_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags)
 {
 	if (dentry->d_name.len > NAME_MAX)
 		return ERR_PTR(-ENAMETOOLONG);
@@ -3963,23 +3980,23 @@ static int cgroup_clear_css_refs(struct cgroup *cgrp)
 	return !failed;
 }
 
-/* Checks if all of the css_sets attached to a cgroup have a refcount of 0. */
+/* checks if all of the css_sets attached to a cgroup have a refcount of 0.
+ * Must be called with css_set_lock held */
 static int cgroup_css_sets_empty(struct cgroup *cgrp)
 {
 	struct cg_cgroup_link *link;
-	int retval = 1;
 
 	read_lock(&css_set_lock);
 	list_for_each_entry(link, &cgrp->css_sets, cgrp_link_list) {
 		struct css_set *cg = link->cg;
 		if (cg && (atomic_read(&cg->refcount) > 0)) {
-			retval = 0;
-			break;
+			read_unlock(&css_set_lock);
+			return 0;
 		}
 	}
-	read_unlock(&css_set_lock);
 
-	return retval;
+	read_unlock(&css_set_lock);
+	return 1;
 }
 
 static int cgroup_rmdir(struct inode *unused_dir, struct dentry *dentry)

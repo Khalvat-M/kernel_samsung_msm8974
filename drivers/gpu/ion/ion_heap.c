@@ -2,7 +2,7 @@
  * drivers/gpu/ion/ion_heap.c
  *
  * Copyright (C) 2011 Google, Inc.
- * Copyright (c) 2011-2014,2016 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2016, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -78,18 +78,6 @@ int ion_heap_map_user(struct ion_heap *heap, struct ion_buffer *buffer,
 	struct scatterlist *sg;
 	int i;
 
-#ifdef CONFIG_TIMA_RKP
-        if (buffer->size) {
-        /* iommu optimization- needs to be turned ON from
-         * the tz side.
-         */
-                cpu_v7_tima_iommu_opt(vma->vm_start, vma->vm_end, (unsigned long)vma->vm_mm->pgd);
-                __asm__ __volatile__ (
-                "mcr    p15, 0, r0, c8, c3, 0\n"
-                "dsb\n"
-                "isb\n");
-        }
-#endif
 	for_each_sg(table->sgl, sg, table->nents, i) {
 		struct page *page = sg_page(sg);
 		unsigned long remainder = vma->vm_end - addr;
@@ -277,31 +265,27 @@ size_t ion_heap_freelist_size(struct ion_heap *heap)
 static size_t _ion_heap_freelist_drain(struct ion_heap *heap, size_t size,
 				bool skip_pools)
 {
-	struct ion_buffer *buffer;
+	struct ion_buffer *buffer, *tmp;
 	size_t total_drained = 0;
 
 	if (ion_heap_freelist_size(heap) == 0)
 		return 0;
 
+	rt_mutex_lock(&heap->lock);
 	if (size == 0)
-		size = ion_heap_freelist_size(heap);
-	
-	while (true) {
-		rt_mutex_lock(&heap->lock);
-		if (list_empty(&heap->free_list) || total_drained >= size ) {
-			rt_mutex_unlock(&heap->lock);
+		size = heap->free_list_size;
+
+	list_for_each_entry_safe(buffer, tmp, &heap->free_list, list) {
+		if (total_drained >= size)
 			break;
-		}
-		buffer = list_first_entry(&heap->free_list, struct ion_buffer,
-				  list);
 		list_del(&buffer->list);
 		heap->free_list_size -= buffer->size;
-		total_drained += buffer->size;
 		if (skip_pools)
 			buffer->flags |= ION_FLAG_FREED_FROM_SHRINKER;
-		rt_mutex_unlock(&heap->lock);
+		total_drained += buffer->size;
 		ion_buffer_destroy(buffer);
 	}
+	rt_mutex_unlock(&heap->lock);
 
 	return total_drained;
 }
@@ -368,7 +352,7 @@ struct ion_heap *ion_heap_create(struct ion_platform_heap *heap_data)
 	switch (heap_data->type) {
 	case ION_HEAP_TYPE_SYSTEM_CONTIG:
 		pr_err("%s: Heap type is disabled: %d\n", __func__,
-		       heap_data->type);
+			heap_data->type);
 		return ERR_PTR(-EINVAL);
 	case ION_HEAP_TYPE_SYSTEM:
 		heap = ion_system_heap_create(heap_data);
@@ -406,7 +390,7 @@ void ion_heap_destroy(struct ion_heap *heap)
 	switch (heap->type) {
 	case ION_HEAP_TYPE_SYSTEM_CONTIG:
 		pr_err("%s: Heap type is disabled: %d\n", __func__,
-		       heap->type);
+			heap->type);
 		break;
 	case ION_HEAP_TYPE_SYSTEM:
 		ion_system_heap_destroy(heap);

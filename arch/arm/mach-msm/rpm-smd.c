@@ -850,7 +850,7 @@ static void msm_rpm_smd_work(struct work_struct *work)
 	char buf[MAX_ERR_BUFFER_SIZE] = {0};
 
 	while (1) {
-		wait_for_completion(&data_ready);
+		wait_for_completion_interruptible(&data_ready);
 
 		spin_lock(&msm_rpm_data.smd_lock_read);
 		while (smd_is_pkt_avail(msm_rpm_data.ch_info)) {
@@ -1357,9 +1357,7 @@ static int __devinit msm_rpm_dev_probe(struct platform_device *pdev)
 	spin_lock_init(&msm_rpm_data.smd_lock_read);
 	INIT_WORK(&msm_rpm_data.work, msm_rpm_smd_work);
 
-	ret = platform_driver_register(&msm_rpm_smd_remote_driver);
-	if (ret < 0)
-		goto fail_driver;
+	platform_driver_register(&msm_rpm_smd_remote_driver);
 	ret = wait_for_completion_timeout(&msm_rpm_data.remote_open,
 			msecs_to_jiffies(SMD_CHANNEL_NOTIF_TIMEOUT));
 
@@ -1403,8 +1401,6 @@ fail:
 	pr_err("%s(): Failed to read node: %s, key=%s\n", __func__,
 			pdev->dev.of_node->full_name, key);
 	return -EINVAL;
-fail_driver:
-	return ret;
 }
 
 static struct of_device_id msm_rpm_match_table[] __initdata =  {

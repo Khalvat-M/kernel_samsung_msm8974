@@ -130,7 +130,6 @@ static int sdio_irq_thread(void *_host)
 			pm_wakeup_event(&host->card->dev, 100);
 			ws = true;
 		}
-
 		ret = process_sdio_pending_irqs(host);
 		host->sdio_irq_pending = false;
 		mmc_release_host(host);
@@ -173,7 +172,6 @@ static int sdio_irq_thread(void *_host)
 		 */
 		if (ws && (host->dev_status == DEV_RESUMED))
 			pm_relax(&host->card->dev);
-
 		if (!kthread_should_stop())
 			schedule_timeout(period);
 		set_current_state(TASK_RUNNING);

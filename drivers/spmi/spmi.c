@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -35,11 +35,6 @@ static DEFINE_IDR(ctrl_idr);
 static DEFINE_IDA(spmi_devid_ida);
 static struct device_type spmi_dev_type;
 static struct device_type spmi_ctrl_type;
-
-#if (!defined(CONFIG_MACH_CT01) && !defined(CONFIG_MACH_CT01_CHN_CU))
-/* for global use */
-struct spmi_controller *spmi_ctrl_extra;
-#endif
 
 /* Forward declarations */
 struct bus_type spmi_bus_type;
@@ -257,7 +252,7 @@ int spmi_add_device(struct spmi_device *spmidev)
 		pr_err("invalid SPMI device\n");
 		return -EINVAL;
 	}
- 
+
 	id = ida_simple_get(&spmi_devid_ida, 0, 0, GFP_KERNEL);
 	if (id < 0) {
 		pr_err("No id available status = %d\n", id);
@@ -473,19 +468,6 @@ int spmi_ext_register_readl(struct spmi_controller *ctrl,
 }
 EXPORT_SYMBOL_GPL(spmi_ext_register_readl);
 
-#if (!defined(CONFIG_MACH_CT01) && !defined(CONFIG_MACH_CT01_CHN_CU))
-int spmi_ext_register_readl_extra(u8 sid, u16 addr, u8 *buf, int len)
-{
-
-        /* 4-bit Slave Identifier, 16-bit register address, up to 8 bytes */
-        if (sid > SPMI_MAX_SLAVE_ID || len <= 0 || len > 8)
-                return -EINVAL;
-
-        return spmi_read_cmd(spmi_ctrl_extra, SPMI_CMD_EXT_READL, sid, addr, len - 1, buf);
-}
-EXPORT_SYMBOL_GPL(spmi_ext_register_readl_extra);
-#endif
-
 /**
  * spmi_register_write() - register write
  * @dev: SPMI device.
@@ -574,20 +556,6 @@ int spmi_ext_register_writel(struct spmi_controller *ctrl,
 	return spmi_write_cmd(ctrl, op, sid, addr, len - 1, buf);
 }
 EXPORT_SYMBOL_GPL(spmi_ext_register_writel);
-
-#if (!defined(CONFIG_MACH_CT01) && !defined(CONFIG_MACH_CT01_CHN_CU))
-int spmi_ext_register_writel_extra(u8 sid, u16 addr, u8 *buf, int len)
-{
-        u8 op = SPMI_CMD_EXT_WRITEL;
-
-        /* 4-bit Slave Identifier, 16-bit register address, up to 8 bytes */
-        if (sid > SPMI_MAX_SLAVE_ID || len <= 0 || len > 8)
-                return -EINVAL;
-
-        return spmi_write_cmd(spmi_ctrl_extra, op, sid, addr, len - 1, buf);
-}
-EXPORT_SYMBOL_GPL(spmi_ext_register_writel_extra);
-#endif
 
 /**
  * spmi_command_reset() - sends RESET command to the specified slave
@@ -855,11 +823,6 @@ static int spmi_register_controller(struct spmi_controller *ctrl)
 
 	dev_dbg(&ctrl->dev, "Bus spmi-%d registered: dev:0x%p\n",
 					ctrl->nr, &ctrl->dev);
-
-#if (!defined(CONFIG_MACH_CT01) && !defined(CONFIG_MACH_CT01_CHN_CU))
-	/* make global controller */
-	spmi_ctrl_extra = ctrl;
-#endif
 
 	spmi_dfs_add_controller(ctrl);
 	return 0;

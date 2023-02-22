@@ -33,7 +33,7 @@ nfs3_rpc_wrapper(struct rpc_clnt *clnt, struct rpc_message *msg, int flags)
 		res = rpc_call_sync(clnt, msg, flags);
 		if (res != -EJUKEBOX)
 			break;
-		freezable_schedule_timeout_killable_unsafe(NFS_JUKEBOX_RETRY_TIME);
+		freezable_schedule_timeout_killable(NFS_JUKEBOX_RETRY_TIME);
 		res = -ERESTARTSYS;
 	} while (!fatal_signal_pending(current));
 	return res;
@@ -314,7 +314,7 @@ static void nfs3_free_createdata(struct nfs3_createdata *data)
  */
 static int
 nfs3_proc_create(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
-		 int flags, struct nfs_open_context *ctx)
+		 int flags)
 {
 	struct nfs3_createdata *data;
 	umode_t mode = sattr->ia_mode;
@@ -398,8 +398,7 @@ nfs3_proc_remove(struct inode *dir, struct qstr *name)
 {
 	struct nfs_removeargs arg = {
 		.fh = NFS_FH(dir),
-		.name.len = name->len,
-		.name.name = name->name,
+		.name = *name,
 	};
 	struct nfs_removeres res;
 	struct rpc_message msg = {

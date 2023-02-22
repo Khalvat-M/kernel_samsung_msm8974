@@ -84,25 +84,16 @@ static int r_show(struct seq_file *m, void *v)
 {
 	struct resource *root = m->private;
 	struct resource *r = v, *p;
-	unsigned long long start, end;
 	int width = root->end < 0x10000 ? 4 : 8;
 	int depth;
 
 	for (depth = 0, p = r; depth < MAX_IORES_LEVEL; depth++, p = p->parent)
 		if (p->parent == root)
 			break;
-
-	if (capable(CAP_SYS_ADMIN)) {
-		start = r->start;
-		end = r->end;
-	} else {
-		start = end = 0;
-	}
-
 	seq_printf(m, "%*s%0*llx-%0*llx : %s\n",
 			depth * 2, "",
-			width, start,
-			width, end,
+			width, (unsigned long long) r->start,
+			width, (unsigned long long) r->end,
 			r->name ? r->name : "<BAD>");
 	return 0;
 }
@@ -1122,7 +1113,7 @@ int iomem_map_sanity_check(resource_size_t addr, unsigned long size)
 {
 	struct resource *p = &iomem_resource;
 	int err = 0;
-	loff_t l = 0;
+	loff_t l;
 
 	read_lock(&resource_lock);
 	for (p = p->child; p ; p = r_next(NULL, p, &l)) {
@@ -1175,7 +1166,7 @@ int iomem_is_exclusive(u64 addr)
 {
 	struct resource *p = &iomem_resource;
 	int err = 0;
-	loff_t l = 0;
+	loff_t l;
 	int size = PAGE_SIZE;
 
 	if (!strict_iomem_checks)

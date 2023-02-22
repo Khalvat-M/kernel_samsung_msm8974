@@ -63,7 +63,7 @@ static inline int nilfs_add_nondir(struct dentry *dentry, struct inode *inode)
  */
 
 static struct dentry *
-nilfs_lookup(struct inode *dir, struct dentry *dentry, struct nameidata *nd)
+nilfs_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags)
 {
 	struct inode *inode;
 	ino_t ino;
@@ -85,7 +85,7 @@ nilfs_lookup(struct inode *dir, struct dentry *dentry, struct nameidata *nd)
  * with d_instantiate().
  */
 static int nilfs_create(struct inode *dir, struct dentry *dentry, umode_t mode,
-			struct nameidata *nd)
+			bool excl)
 {
 	struct inode *inode;
 	struct nilfs_transaction_info ti;
@@ -441,7 +441,7 @@ static struct dentry *nilfs_get_parent(struct dentry *child)
 {
 	unsigned long ino;
 	struct inode *inode;
-	struct qstr dotdot = {.name = "..", .len = 2};
+	struct qstr dotdot = QSTR_INIT("..", 2);
 	struct nilfs_root *root;
 
 	ino = nilfs_inode_by_name(child->d_inode, &dotdot);

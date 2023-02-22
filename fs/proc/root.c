@@ -156,38 +156,6 @@ static struct file_system_type proc_fs_type = {
 	.kill_sb	= proc_kill_sb,
 };
 
-#ifdef CONFIG_DEFERRED_INITCALLS
-extern void do_deferred_initcalls(void);
-
-static ssize_t deferred_initcalls_read_proc(struct file *file, char __user *buf,
-					   size_t nbytes, loff_t *ppos)
-{
-	static int deferred_initcalls_done = 0;
-	int len, ret;
-	char tmp[3] = "1\n";
-
-	if (*ppos >= 3)
-		return 0;
-
-	if ((! deferred_initcalls_done) && ! (*ppos)) {
-		tmp[0] = '0';
-		do_deferred_initcalls();
-		deferred_initcalls_done = 1;
-	}
-
-	len = min(nbytes, (size_t)3);
-	ret = copy_to_user(buf, tmp, len);
-	if (ret)
-		return -EFAULT;
-	*ppos += len;
-	return len;
-}
-
-static const struct file_operations deferred_initcalls_fops = {
-	.read           = deferred_initcalls_read_proc,
-};
-#endif
-
 void __init proc_root_init(void)
 {
 	int err;
@@ -202,9 +170,6 @@ void __init proc_root_init(void)
 		return;
 	}
 
-#ifdef CONFIG_DEFERRED_INITCALLS
-	proc_create("deferred_initcalls", 0, NULL, &deferred_initcalls_fops);
-#endif
 	proc_symlink("mounts", NULL, "self/mounts");
 
 	proc_net_init();
@@ -235,13 +200,12 @@ static int proc_root_getattr(struct vfsmount *mnt, struct dentry *dentry, struct
 	return 0;
 }
 
-static struct dentry *proc_root_lookup(struct inode * dir, struct dentry * dentry, struct nameidata *nd)
+static struct dentry *proc_root_lookup(struct inode * dir, struct dentry * dentry, unsigned int flags)
 {
-	if (!proc_lookup(dir, dentry, nd)) {
+	if (!proc_lookup(dir, dentry, flags))
 		return NULL;
-	}
 	
-	return proc_pid_lookup(dir, dentry, nd);
+	return proc_pid_lookup(dir, dentry, flags);
 }
 
 static int proc_root_readdir(struct file * filp,

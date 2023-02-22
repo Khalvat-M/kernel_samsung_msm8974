@@ -81,11 +81,6 @@ int crypto_hash_walk_done(struct crypto_hash_walk *walk, int err)
 	unsigned int alignmask = walk->alignmask;
 	unsigned int nbytes = walk->entrylen;
 
-#ifdef CONFIG_CRYPTO_FIPS
-	if (unlikely(in_fips_err()))
-		return -EACCES;
-#endif
-
 	walk->data -= walk->offset;
 
 	if (nbytes && walk->offset & alignmask && !err) {
@@ -123,11 +118,6 @@ EXPORT_SYMBOL_GPL(crypto_hash_walk_done);
 int crypto_hash_walk_first(struct ahash_request *req,
 			   struct crypto_hash_walk *walk)
 {
-#ifdef CONFIG_CRYPTO_FIPS
-	if (unlikely(in_fips_err()))
-		return -EACCES;
-#endif
-
 	walk->total = req->nbytes;
 
 	if (!walk->total)
@@ -145,11 +135,6 @@ int crypto_hash_walk_first_compat(struct hash_desc *hdesc,
 				  struct crypto_hash_walk *walk,
 				  struct scatterlist *sg, unsigned int len)
 {
-#ifdef CONFIG_CRYPTO_FIPS
-	if (unlikely(in_fips_err()))
-		return -EACCES;
-#endif
-
 	walk->total = len;
 
 	if (!walk->total)
@@ -219,10 +204,41 @@ static int ahash_save_req(struct ahash_request *req, crypto_completion_t cplt)
 	if (!priv)
 		return -ENOMEM;
 
+	/*
+	 * WARNING: Voodoo programming below!
+	 *
+	 * The code below is obscure and hard to understand, thus explanation
+	 * is necessary. See include/crypto/hash.h and include/linux/crypto.h
+	 * to understand the layout of structures used here!
+	 *
+	 * The code here will replace portions of the ORIGINAL request with
+	 * pointers to new code and buffers so the hashing operation can store
+	 * the result in aligned buffer. We will call the modified request
+	 * an ADJUSTED request.
+	 *
+	 * The newly mangled request will look as such:
+	 *
+	 * req {
+	 *   .result        = ADJUSTED[new aligned buffer]
+	 *   .base.complete = ADJUSTED[pointer to completion function]
+	 *   .base.data     = ADJUSTED[*req (pointer to self)]
+	 *   .priv          = ADJUSTED[new priv] {
+	 *           .result   = ORIGINAL(result)
+	 *           .complete = ORIGINAL(base.complete)
+	 *           .data     = ORIGINAL(base.data)
+	 *   }
+	 */
+
 	priv->result = req->result;
 	priv->complete = req->base.complete;
 	priv->data = req->base.data;
 	priv->flags = req->base.flags;
+
+	/*
+	 * WARNING: We do not backup req->priv here! The req->priv
+	 *          is for internal use of the Crypto API and the
+	 *          user must _NOT_ _EVER_ depend on it's content!
+	 */
 
 	req->result = PTR_ALIGN((u8 *)priv->ubuf, alignmask + 1);
 	req->base.complete = cplt;
@@ -311,11 +327,6 @@ static int crypto_ahash_op(struct ahash_request *req,
 {
 	struct crypto_ahash *tfm = crypto_ahash_reqtfm(req);
 	unsigned long alignmask = crypto_ahash_alignmask(tfm);
-
-#ifdef CONFIG_CRYPTO_FIPS
-	if (unlikely(in_fips_err()))
-		return -EACCES;
-#endif
 
 	if ((unsigned long)req->result & alignmask)
 		return ahash_op_unaligned(req, op);
@@ -421,11 +432,6 @@ static int crypto_ahash_init_tfm(struct crypto_tfm *tfm)
 {
 	struct crypto_ahash *hash = __crypto_ahash_cast(tfm);
 	struct ahash_alg *alg = crypto_ahash_alg(hash);
-
-#ifdef CONFIG_CRYPTO_FIPS
-	if (unlikely(in_fips_err()))
-		return -EACCES;
-#endif
 
 	hash->setkey = ahash_nosetkey;
 	hash->export = ahash_no_export;
@@ -555,11 +561,6 @@ int ahash_register_instance(struct crypto_template *tmpl,
 			    struct ahash_instance *inst)
 {
 	int err;
-
-#ifdef CONFIG_CRYPTO_FIPS
-	if (unlikely(in_fips_err()))
-		return -EACCES;
-#endif
 
 	err = ahash_prepare_alg(&inst->alg);
 	if (err)

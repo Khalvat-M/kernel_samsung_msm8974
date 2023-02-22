@@ -131,12 +131,9 @@ unsigned int __kfifo_in(struct __kfifo *fifo,
 	unsigned int l;
 
 	l = kfifo_unused(fifo);
-	if (len > l) {
-		if ((l % 4) != 0)
-			pr_info("[SSP] %s - %u, %u, %u\n", __func__,
-				fifo->mask, fifo->in, fifo->out);
+	if (len > l)
 		len = l;
-	}
+
 	kfifo_copy_in(fifo, buf, len, fifo->in);
 	fifo->in += len;
 	return len;

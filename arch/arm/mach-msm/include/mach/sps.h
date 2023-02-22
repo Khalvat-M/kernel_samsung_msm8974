@@ -179,8 +179,6 @@ enum sps_option {
 	SPS_O_IRQ_MTI   = 0x00020000,
 	/* NWD bit written with EOT for BAM2BAM producer pipe */
 	SPS_O_WRITE_NWD   = 0x00040000,
-	/* EOT set after pipe SW offset advanced */
-	SPS_O_LATE_EOT   = 0x00080000,
 
 	/* Options to enable software features */
 	/* Do not disable a pipe during disconnection */

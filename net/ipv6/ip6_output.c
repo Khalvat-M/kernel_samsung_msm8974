@@ -138,7 +138,7 @@ static int ip6_finish_output2(struct sk_buff *skb)
 	rcu_read_lock();
 	neigh = dst_get_neighbour_noref(dst);
 	if (neigh) {
-		int res = neigh_output(neigh, skb);
+		int res = dst_neigh_output(dst, neigh, skb);
 
 		rcu_read_unlock();
 		return res;
@@ -1344,12 +1344,10 @@ int ip6_append_data(struct sock *sk, int getfrag(void *from, char *to,
 
 	skb = skb_peek_tail(&sk->sk_write_queue);
 	cork->length += length;
-	if ((skb && skb_has_frags(skb)) ||
-	    (((length + fragheaderlen) > mtu) &&
-	    (skb_queue_len(&sk->sk_write_queue) <= 1) &&
+	if (((length > mtu) ||
+	     (skb && skb_has_frags(skb))) &&
 	    (sk->sk_protocol == IPPROTO_UDP) &&
-	    (rt->dst.dev->features & NETIF_F_UFO) && !dst_xfrm(&rt->dst) &&
-	    (sk->sk_type == SOCK_DGRAM))) {
+	    (rt->dst.dev->features & NETIF_F_UFO)) {
 		err = ip6_ufo_append_data(sk, getfrag, from, length,
 					  hh_len, fragheaderlen,
 					  transhdrlen, mtu, flags, rt);

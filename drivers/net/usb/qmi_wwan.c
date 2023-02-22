@@ -86,13 +86,8 @@ static int qmi_wwan_bind(struct usbnet *dev, struct usb_interface *intf)
 			dev_name(&control->dev));
 	}
 
-	while (len > 0) {
+	while (len > 3) {
 		struct usb_descriptor_header *h = (void *)buf;
-
-		if ((len < buf[0]) || (buf[0] < 3)) {
-			dev_dbg(&intf->dev, "invalid descriptor buffer length\n");
-			goto err;
-		}
 
 		/* ignore any misplaced descriptors */
 		if (h->bDescriptorType != USB_DT_CS_INTERFACE)

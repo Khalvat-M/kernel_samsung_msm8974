@@ -91,32 +91,12 @@ const struct file_operations sensors_adsp_fops = {
 	.release = sensors_adsp_release,
 	.unlocked_ioctl = sensors_adsp_ioctl
 };
-#ifdef CONFIG_ADSP_FACTORY
- struct class* get_adsp_sensor_class( void )
-{
 
-pr_err(" %s:",__func__);
-if (sns_ctl.dev_class == NULL) {
-		sns_ctl.dev_class = class_create(THIS_MODULE, DRV_NAME);
-		if (sns_ctl.dev_class == NULL) {
-			pr_err("%s: class_create fail.\n", __func__);
-	}
-}
-
-return sns_ctl.dev_class;
-}
-
-EXPORT_SYMBOL(get_adsp_sensor_class);
-#endif
 static int sensors_adsp_probe(struct platform_device *pdev)
 {
 	int ret = 0;
-#ifdef CONFIG_ADSP_FACTORY
-	pr_err("%s:++",__func__);
-	if (sns_ctl.dev_class == NULL) {
-	sns_ctl.dev_class = class_create(THIS_MODULE, DRV_NAME);
-	}
-#endif
+
+	sns_ctl.dev_class = class_create(THIS_MODULE, CLASS_NAME);
 	if (sns_ctl.dev_class == NULL) {
 		pr_err("%s: class_create fail.\n", __func__);
 		goto res_err;

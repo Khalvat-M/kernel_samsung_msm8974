@@ -226,7 +226,7 @@ static void nfs_free_createdata(const struct nfs_createdata *data)
 
 static int
 nfs_proc_create(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
-		int flags, struct nfs_open_context *ctx)
+		int flags)
 {
 	struct nfs_createdata *data;
 	struct rpc_message msg = {
@@ -302,8 +302,7 @@ nfs_proc_remove(struct inode *dir, struct qstr *name)
 {
 	struct nfs_removeargs arg = {
 		.fh = NFS_FH(dir),
-		.name.len = name->len,
-		.name.name = name->name,
+		.name = *name,
 	};
 	struct rpc_message msg = { 
 		.rpc_proc = &nfs_procedures[NFSPROC_REMOVE],

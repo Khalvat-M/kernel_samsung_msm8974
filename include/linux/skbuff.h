@@ -1,4 +1,3 @@
-/* Copyright (c) 2015 Samsung Electronics Co., Ltd. */
 /*
  *	Definitions for the 'struct sk_buff' memory handlers.
  *
@@ -10,14 +9,6 @@
  *	modify it under the terms of the GNU General Public License
  *	as published by the Free Software Foundation; either version
  *	2 of the License, or (at your option) any later version.
- */
-/*
- *  Changes:
- *  KwnagHyun Kim <kh0304.kim@samsung.com> 2015/07/08
- *  Baesung Park  <baesung.park@samsung.com> 2015/07/08
- *  Vignesh Saravanaperumal <vignesh1.s@samsung.com> 2015/07/08
- *    Add codes to share UID/PID information
- *
  */
 
 #ifndef _LINUX_SKBUFF_H
@@ -501,7 +492,6 @@ struct sk_buff {
 				*data;
 	unsigned int		truesize;
 	atomic_t		users;
-
 };
 
 #ifdef __KERNEL__
@@ -2156,7 +2146,7 @@ extern int	       skb_copy_datagram_iovec(const struct sk_buff *from,
 					       int size);
 extern int	       skb_copy_and_csum_datagram_iovec(struct sk_buff *skb,
 							int hlen,
-							struct iovec *iov, int len);
+							struct iovec *iov);
 extern int	       skb_copy_datagram_from_iovec(struct sk_buff *skb,
 						    int offset,
 						    const struct iovec *from,

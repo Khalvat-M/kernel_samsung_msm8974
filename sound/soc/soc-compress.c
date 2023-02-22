@@ -475,7 +475,6 @@ static int soc_compr_set_params_fe(struct snd_compr_stream *cstream,
 	struct snd_soc_pcm_runtime *fe = cstream->private_data;
 	struct snd_pcm_substream *fe_substream = fe->pcm->streams[0].substream;
 	struct snd_soc_platform *platform = fe->platform;
-
 	int ret = 0, stream;
 
 	if (cstream->direction == SND_COMPRESS_PLAYBACK)
@@ -502,7 +501,7 @@ static int soc_compr_set_params_fe(struct snd_compr_stream *cstream,
 			goto out;
 	}
 
-	memset(&fe->dpcm[fe_substream->stream].hw_params, 0,
+	memcpy(&fe->dpcm[fe_substream->stream].hw_params, params,
 			sizeof(struct snd_pcm_hw_params));
 
 	fe->dpcm[stream].runtime_update = SND_SOC_DPCM_UPDATE_FE;

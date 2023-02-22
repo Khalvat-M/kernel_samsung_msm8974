@@ -539,7 +539,7 @@ static int create_bulk_endpoints(struct acc_dev *dev,
 	struct usb_ep *ep;
 	int i;
 
-	DBG(cdev, "create_bulk_endpoints dev: %pK\n", dev);
+	DBG(cdev, "create_bulk_endpoints dev: %p\n", dev);
 
 	ep = usb_ep_autoconfig(cdev->gadget, in_desc);
 	if (!ep) {
@@ -600,7 +600,7 @@ static ssize_t acc_read(struct file *fp, char __user *buf,
 {
 	struct acc_dev *dev = fp->private_data;
 	struct usb_request *req;
-	int r = count, xfer;
+	int r = count, xfer, len;
 	int ret = 0;
 
 	pr_debug("acc_read(%d)\n", count);
@@ -612,6 +612,8 @@ static ssize_t acc_read(struct file *fp, char __user *buf,
 
 	if (count > BULK_BUFFER_SIZE)
 		count = BULK_BUFFER_SIZE;
+
+	len = ALIGN(count, dev->ep_out->maxpacket);
 
 	/* we will block until we're online */
 	pr_debug("acc_read: waiting for online\n");
@@ -630,14 +632,14 @@ static ssize_t acc_read(struct file *fp, char __user *buf,
 requeue_req:
 	/* queue a request */
 	req = dev->rx_req[0];
-	req->length = count;
+	req->length = len;
 	dev->rx_done = 0;
 	ret = usb_ep_queue(dev->ep_out, req, GFP_KERNEL);
 	if (ret < 0) {
 		r = -EIO;
 		goto done;
 	} else {
-		pr_debug("rx %pK queue\n", req);
+		pr_debug("rx %p queue\n", req);
 	}
 
 	/* wait for a request to complete */
@@ -660,7 +662,7 @@ copy_data:
 		if (req->actual == 0)
 			goto requeue_req;
 
-		pr_debug("rx %pK %d\n", req, req->actual);
+		pr_debug("rx %p %d\n", req, req->actual);
 		xfer = (req->actual < count) ? req->actual : count;
 		r = xfer;
 		if (copy_to_user(buf, req->buf, xfer))
@@ -864,7 +866,7 @@ static int acc_ctrlrequest(struct usb_composite_dev *cdev,
 		if (b_request == ACCESSORY_START) {
 			dev->start_requested = 1;
 			schedule_delayed_work(
-				&dev->start_work, msecs_to_jiffies(200));
+				&dev->start_work, msecs_to_jiffies(10));
 			value = 0;
 		} else if (b_request == ACCESSORY_SEND_STRING) {
 			dev->string_index = w_index;
@@ -952,7 +954,7 @@ acc_function_bind(struct usb_configuration *c, struct usb_function *f)
 	int			id;
 	int			ret;
 
-	DBG(cdev, "acc_function_bind dev: %pK\n", dev);
+	DBG(cdev, "acc_function_bind dev: %p\n", dev);
 
 	ret = hid_register_driver(&acc_hid_driver);
 	if (ret)
@@ -1000,6 +1002,10 @@ kill_all_hid_devices(struct acc_dev *dev)
 	struct acc_hid_dev *hid;
 	struct list_head *entry, *temp;
 	unsigned long flags;
+
+	/* do nothing if usb accessory device doesn't exist */
+	if (!dev)
+		return;
 
 	spin_lock_irqsave(&dev->lock, flags);
 	list_for_each_safe(entry, temp, &dev->hid_list) {
@@ -1114,7 +1120,7 @@ static void acc_hid_work(struct work_struct *data)
 	list_for_each_safe(entry, temp, &new_list) {
 		hid = list_entry(entry, struct acc_hid_dev, list);
 		if (acc_hid_init(hid)) {
-			pr_err("can't add HID device %pK\n", hid);
+			pr_err("can't add HID device %p\n", hid);
 			acc_hid_delete(hid);
 		} else {
 			spin_lock_irqsave(&dev->lock, flags);

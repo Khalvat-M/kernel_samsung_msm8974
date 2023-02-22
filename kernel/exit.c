@@ -766,7 +766,6 @@ static void reparent_leader(struct task_struct *father, struct task_struct *p,
 				struct list_head *dead)
 {
 	list_move_tail(&p->sibling, &p->real_parent->children);
-
 	/*
 	 * If this is a threaded reparent there is no need to
 	 * notify anyone anything has happened.
@@ -920,8 +919,8 @@ void do_exit(long code)
 
 	if (unlikely(in_interrupt()))
 		panic("Aiee, killing interrupt handler!");
-	if (unlikely(!tsk->pid) || unlikely(tsk->pid==1))
-		panic("Attempted to kill the idle task! or init task");
+	if (unlikely(!tsk->pid))
+		panic("Attempted to kill the idle task!");
 
 	/*
 	 * If do_exit is called because this processes oopsed, it's possible
@@ -1045,7 +1044,7 @@ void do_exit(long code)
 	/*
 	 * Make sure we are holding no locks:
 	 */
-	debug_check_no_locks_held();
+	debug_check_no_locks_held(tsk);
 	/*
 	 * We can do this unlocked here. The futex code uses this flag
 	 * just to verify whether the pi state cleanup has been done

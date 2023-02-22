@@ -1225,8 +1225,8 @@ go_proc:
 	/* issue go to crypto   */
 	if (use_hw_key == false)
 		writel_relaxed(((1 << CRYPTO_GO) | (1 << CRYPTO_RESULTS_DUMP) |
-						(1 << CRYPTO_CLR_CNTXT)),
-						pce_dev->iobase + CRYPTO_GOPROC_REG);
+				(1 << CRYPTO_CLR_CNTXT)),
+				pce_dev->iobase + CRYPTO_GOPROC_REG);
 	else
 		writel_relaxed(((1 << CRYPTO_GO) | (1 << CRYPTO_RESULTS_DUMP)),
 				pce_dev->iobase + CRYPTO_GOPROC_QC_KEY_REG);
@@ -1413,8 +1413,8 @@ static int _ce_setup_aead_direct(struct qce_device *pce_dev,
 							CRYPTO_CONFIG_REG));
 	/* issue go to crypto   */
 	writel_relaxed(((1 << CRYPTO_GO) | (1 << CRYPTO_RESULTS_DUMP) |
-					(1 << CRYPTO_CLR_CNTXT)),
-					pce_dev->iobase + CRYPTO_GOPROC_REG);
+				(1 << CRYPTO_CLR_CNTXT)),
+				pce_dev->iobase + CRYPTO_GOPROC_REG);
 	/*
 	 * Ensure previous instructions (setting the GO register)
 	 * was completed before issuing a DMA transfer request
@@ -1725,8 +1725,8 @@ static int _ce_setup_cipher_direct(struct qce_device *pce_dev,
 	/* issue go to crypto   */
 	if (use_hw_key == false)
 		writel_relaxed(((1 << CRYPTO_GO) | (1 << CRYPTO_RESULTS_DUMP) |
-						(1 << CRYPTO_CLR_CNTXT)),
-						pce_dev->iobase + CRYPTO_GOPROC_REG);
+				(1 << CRYPTO_CLR_CNTXT)),
+				pce_dev->iobase + CRYPTO_GOPROC_REG);
 	else
 		writel_relaxed(((1 << CRYPTO_GO) | (1 << CRYPTO_RESULTS_DUMP)),
 				pce_dev->iobase + CRYPTO_GOPROC_QC_KEY_REG);
@@ -1813,8 +1813,7 @@ static int _ce_f9_setup_direct(struct qce_device *pce_dev,
 							CRYPTO_CONFIG_REG));
 	/* write go */
 	writel_relaxed(((1 << CRYPTO_GO) | (1 << CRYPTO_RESULTS_DUMP) |
-							(1 << CRYPTO_CLR_CNTXT)),
-							pce_dev->iobase +  CRYPTO_GOPROC_REG);
+		(1 << CRYPTO_CLR_CNTXT)), pce_dev->iobase +  CRYPTO_GOPROC_REG);
 	/*
 	 * Ensure previous instructions (setting the GO register)
 	 * was completed before issuing a DMA transfer request
@@ -1891,8 +1890,7 @@ static int _ce_f8_setup_direct(struct qce_device *pce_dev,
 							CRYPTO_CONFIG_REG));
 	/* write go */
 	writel_relaxed(((1 << CRYPTO_GO) | (1 << CRYPTO_RESULTS_DUMP) |
-							(1 << CRYPTO_CLR_CNTXT)),
-							pce_dev->iobase +  CRYPTO_GOPROC_REG);
+		(1 << CRYPTO_CLR_CNTXT)), pce_dev->iobase +  CRYPTO_GOPROC_REG);
 	/*
 	 * Ensure previous instructions (setting the GO register)
 	 * was completed before issuing a DMA transfer request
@@ -3124,8 +3122,8 @@ static int _setup_cipher_aes_cmdlistptrs(struct qce_device *pdev,
 			pdev->reg.crypto_cfg_le, NULL);
 
 	qce_add_cmd_element(pdev, &ce_vaddr, CRYPTO_GOPROC_REG,
-					((1 << CRYPTO_GO) | (1 << CRYPTO_RESULTS_DUMP) |
-					(1 << CRYPTO_CLR_CNTXT)), &pcl_info->go_proc);
+			((1 << CRYPTO_GO) | (1 << CRYPTO_RESULTS_DUMP) |
+			(1 << CRYPTO_CLR_CNTXT)), &pcl_info->go_proc);
 
 	pcl_info->size = (uint32_t)ce_vaddr - (uint32_t)ce_vaddr_start;
 	*pvaddr = (unsigned char *) ce_vaddr;
@@ -3237,8 +3235,8 @@ static int _setup_cipher_des_cmdlistptrs(struct qce_device *pdev,
 			pdev->reg.crypto_cfg_le, NULL);
 
 	qce_add_cmd_element(pdev, &ce_vaddr, CRYPTO_GOPROC_REG,
-					((1 << CRYPTO_GO) | (1 << CRYPTO_RESULTS_DUMP) |
-					(1 << CRYPTO_CLR_CNTXT)), &pcl_info->go_proc);
+			((1 << CRYPTO_GO) | (1 << CRYPTO_RESULTS_DUMP) |
+			(1 << CRYPTO_CLR_CNTXT)), &pcl_info->go_proc);
 
 	pcl_info->size = (uint32_t)ce_vaddr - (uint32_t)ce_vaddr_start;
 	*pvaddr = (unsigned char *) ce_vaddr;
@@ -3415,8 +3413,8 @@ static int _setup_auth_cmdlistptrs(struct qce_device *pdev,
 					pdev->reg.crypto_cfg_le, NULL);
 
 	qce_add_cmd_element(pdev, &ce_vaddr, CRYPTO_GOPROC_REG,
-					((1 << CRYPTO_GO) | (1 << CRYPTO_RESULTS_DUMP) |
-					(1 << CRYPTO_CLR_CNTXT)), &pcl_info->go_proc);
+			((1 << CRYPTO_GO) | (1 << CRYPTO_RESULTS_DUMP) |
+			(1 << CRYPTO_CLR_CNTXT)), &pcl_info->go_proc);
 
 	pcl_info->size = (uint32_t)ce_vaddr - (uint32_t)ce_vaddr_start;
 	*pvaddr = (unsigned char *) ce_vaddr;
@@ -3620,8 +3618,8 @@ static int _setup_aead_cmdlistptrs(struct qce_device *pdev,
 					pdev->reg.crypto_cfg_le, NULL);
 
 	qce_add_cmd_element(pdev, &ce_vaddr, CRYPTO_GOPROC_REG,
-					((1 << CRYPTO_GO) | (1 << CRYPTO_RESULTS_DUMP) |
-					(1 << CRYPTO_CLR_CNTXT)), &pcl_info->go_proc);
+			((1 << CRYPTO_GO) | (1 << CRYPTO_RESULTS_DUMP) |
+			(1 << CRYPTO_CLR_CNTXT)), &pcl_info->go_proc);
 
 	pcl_info->size = (uint32_t)ce_vaddr - (uint32_t)ce_vaddr_start;
 	*pvaddr = (unsigned char *) ce_vaddr;
@@ -3744,8 +3742,8 @@ static int _setup_aead_ccm_cmdlistptrs(struct qce_device *pdev,
 					pdev->reg.crypto_cfg_le, NULL);
 
 	qce_add_cmd_element(pdev, &ce_vaddr, CRYPTO_GOPROC_REG,
-					((1 << CRYPTO_GO) | (1 << CRYPTO_RESULTS_DUMP) |
-					(1 << CRYPTO_CLR_CNTXT)), &pcl_info->go_proc);
+			((1 << CRYPTO_GO) | (1 << CRYPTO_RESULTS_DUMP) |
+			(1 << CRYPTO_CLR_CNTXT)), &pcl_info->go_proc);
 
 	pcl_info->size = (uint32_t)ce_vaddr - (uint32_t)ce_vaddr_start;
 	*pvaddr = (unsigned char *) ce_vaddr;
@@ -3829,8 +3827,8 @@ static int _setup_f8_cmdlistptrs(struct qce_device *pdev,
 					pdev->reg.crypto_cfg_le, NULL);
 
 	qce_add_cmd_element(pdev, &ce_vaddr, CRYPTO_GOPROC_REG,
-					((1 << CRYPTO_GO) | (1 << CRYPTO_RESULTS_DUMP) |
-					(1 << CRYPTO_CLR_CNTXT)), &pcl_info->go_proc);
+			((1 << CRYPTO_GO) | (1 << CRYPTO_RESULTS_DUMP) |
+			(1 << CRYPTO_CLR_CNTXT)), &pcl_info->go_proc);
 
 	pcl_info->size = (uint32_t)ce_vaddr - (uint32_t)ce_vaddr_start;
 	*pvaddr = (unsigned char *) ce_vaddr;
@@ -3910,8 +3908,8 @@ static int _setup_f9_cmdlistptrs(struct qce_device *pdev,
 					pdev->reg.crypto_cfg_le, NULL);
 
 	qce_add_cmd_element(pdev, &ce_vaddr, CRYPTO_GOPROC_REG,
-					((1 << CRYPTO_GO) | (1 << CRYPTO_RESULTS_DUMP) |
-					(1 << CRYPTO_CLR_CNTXT)), &pcl_info->go_proc);
+			((1 << CRYPTO_GO) | (1 << CRYPTO_RESULTS_DUMP) |
+			(1 << CRYPTO_CLR_CNTXT)), &pcl_info->go_proc);
 
 	pcl_info->size = (uint32_t)ce_vaddr - (uint32_t)ce_vaddr_start;
 	*pvaddr = (unsigned char *) ce_vaddr;
@@ -4499,9 +4497,9 @@ int qce_aead_req(void *handle, struct qce_req *q_req)
 		q_req->cryptlen = areq->cryptlen - authsize;
 
 	if ((q_req->cryptlen > UINT_MAX - areq->assoclen) ||
-	    (q_req->cryptlen + areq->assoclen > UINT_MAX - ivsize)) {
-		pr_err("Integer overflow on total aead req length.\n");
-		return -EINVAL;
+		(q_req->cryptlen + areq->assoclen > UINT_MAX - ivsize)) {
+			pr_err("Integer overflow on total aead req length.\n");
+			return -EINVAL;
 	}
 
 	totallen = q_req->cryptlen + areq->assoclen + ivsize;

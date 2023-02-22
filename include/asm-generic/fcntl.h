@@ -90,14 +90,10 @@
 
 /* a horrid kludge trying to make sure that this will fail on old kernels */
 #define O_TMPFILE (__O_TMPFILE | O_DIRECTORY)
-#define O_TMPFILE_MASK (__O_TMPFILE | O_DIRECTORY | O_CREAT)
+#define O_TMPFILE_MASK (__O_TMPFILE | O_DIRECTORY | O_CREAT)      
 
 #ifndef O_NDELAY
 #define O_NDELAY	O_NONBLOCK
-#endif
-
-#ifdef CONFIG_SCFS_LOWER_PAGECACHE_INVALIDATION
-#define O_SCFSLOWER	040000000
 #endif
 
 #define F_DUPFD		0	/* dup */

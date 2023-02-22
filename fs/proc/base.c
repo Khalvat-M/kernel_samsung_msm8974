@@ -137,6 +137,12 @@ struct pid_entry {
 
 static int proc_fd_permission(struct inode *inode, int mask);
 
+/* ANDROID is for special files in /proc. */
+#define ANDROID(NAME, MODE, OTYPE)			\
+	NOD(NAME, (S_IFREG|(MODE)),			\
+		&proc_##OTYPE##_inode_operations,	\
+		&proc_##OTYPE##_operations, {})
+
 /*
  * Count the number of hardlinks for the pid_entry table, excluding the .
  * and .. links.
@@ -205,7 +211,39 @@ struct mm_struct *mm_for_maps(struct task_struct *task)
 
 static int proc_pid_cmdline(struct task_struct *task, char * buffer)
 {
-	return get_cmdline(task, buffer, PAGE_SIZE);
+	int res = 0;
+	unsigned int len;
+	struct mm_struct *mm = get_task_mm(task);
+	if (!mm)
+		goto out;
+	if (!mm->arg_end)
+		goto out_mm;	/* Shh! No looking before we're done */
+
+ 	len = mm->arg_end - mm->arg_start;
+ 
+	if (len > PAGE_SIZE)
+		len = PAGE_SIZE;
+ 
+	res = access_process_vm(task, mm->arg_start, buffer, len, 0);
+
+	// If the nul at the end of args has been overwritten, then
+	// assume application is using setproctitle(3).
+	if (res > 0 && buffer[res-1] != '\0' && len < PAGE_SIZE) {
+		len = strnlen(buffer, res);
+		if (len < res) {
+		    res = len;
+		} else {
+			len = mm->env_end - mm->env_start;
+			if (len > PAGE_SIZE - res)
+				len = PAGE_SIZE - res;
+			res += access_process_vm(task, mm->env_start, buffer+res, len, 0);
+			res = strnlen(buffer, res);
+		}
+	}
+out_mm:
+	mmput(mm);
+out:
+	return res;
 }
 
 static int proc_pid_auxv(struct task_struct *task, char *buffer)
@@ -938,67 +976,6 @@ out:
 	return err < 0 ? err : count;
 }
 
-#ifdef CONFIG_SAMP_HOTNESS
-static ssize_t hotness_adjust_write(struct file *file, const char __user *buf,
-				size_t count, loff_t *ppos)
-{
-	struct task_struct *task;
-	char buffer[PROC_NUMBUF];
-	int hotness_adjust;
-	unsigned long flags;
-	int err;
-
-	memset(buffer, 0, sizeof(buffer));
-	if (count > sizeof(buffer) - 1)
-		count = sizeof(buffer) - 1;
-	if (copy_from_user(buffer, buf, count)) {
-		err = -EFAULT;
-		goto out;
-	}
-
-	err = kstrtoint(strstrip(buffer), 0, &hotness_adjust);
-	if (err)
-		goto out;
-
-	task = get_proc_task(file->f_path.dentry->d_inode);
-	if (!task) {
-		err = -ESRCH;
-		goto out;
-	}
-
-	task_lock(task);
-	if (!task->mm) {
-		err = -EINVAL;
-		goto err_task_lock;
-	}
-
-        if ((task->pid & 0xF) != (hotness_adjust & 0xF)) {
-		err = -EINVAL;
-		goto out;
-        }
-
-	if (!lock_task_sighand(task, &flags)) {
-		err = -ESRCH;
-		goto err_task_lock;
-	}
-
-	if (!capable(CAP_SYS_RESOURCE)) {
-		err = -EACCES;
-		goto err_sighand;
-	}
-
-	task->signal->hotness_adj = hotness_adjust >> 4;
-
-err_sighand:
-	unlock_task_sighand(task, &flags);
-err_task_lock:
-	task_unlock(task);
-	put_task_struct(task);
-out:
-	return err < 0 ? err : count;
-}
-#endif
-
 static int oom_adjust_permission(struct inode *inode, int mask)
 {
 	uid_t uid;
@@ -1033,13 +1010,6 @@ static const struct file_operations proc_oom_adjust_operations = {
 	.write		= oom_adjust_write,
 	.llseek		= generic_file_llseek,
 };
-
-#ifdef CONFIG_SAMP_HOTNESS
-static const struct file_operations proc_hotness_adjust_operations = {
-	.write		= hotness_adjust_write,
-	.llseek		= generic_file_llseek,
-};
-#endif
 
 static ssize_t oom_score_adj_read(struct file *file, char __user *buf,
 					size_t count, loff_t *ppos)
@@ -1493,16 +1463,19 @@ static int proc_exe_link(struct dentry *dentry, struct path *exe_path)
 static void *proc_pid_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
 	struct inode *inode = dentry->d_inode;
+	struct path path;
 	int error = -EACCES;
-
-	/* We don't need a base pointer in the /proc filesystem */
-	path_put(&nd->path);
 
 	/* Are we allowed to snoop on the tasks file descriptors? */
 	if (!proc_fd_access_allowed(inode))
 		goto out;
 
-	error = PROC_I(inode)->op.proc_get_link(dentry, &nd->path);
+	error = PROC_I(inode)->op.proc_get_link(dentry, &path);
+	if (error)
+		goto out;
+
+	nd_jump_link(nd, &path);
+	return NULL;
 out:
 	return ERR_PTR(error);
 }
@@ -1667,13 +1640,13 @@ int pid_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)
  * made this apply to all per process world readable and executable
  * directories.
  */
-int pid_revalidate(struct dentry *dentry, struct nameidata *nd)
+int pid_revalidate(struct dentry *dentry, unsigned int flags)
 {
 	struct inode *inode;
 	struct task_struct *task;
 	const struct cred *cred;
 
-	if (nd && nd->flags & LOOKUP_RCU)
+	if (flags & LOOKUP_RCU)
 		return -ECHILD;
 
 	inode = dentry->d_inode;
@@ -1847,7 +1820,7 @@ static int proc_fd_link(struct dentry *dentry, struct path *path)
 	return proc_fd_info(dentry->d_inode, path, NULL);
 }
 
-static int tid_fd_revalidate(struct dentry *dentry, struct nameidata *nd)
+static int tid_fd_revalidate(struct dentry *dentry, unsigned int flags)
 {
 	struct inode *inode;
 	struct task_struct *task;
@@ -1855,7 +1828,7 @@ static int tid_fd_revalidate(struct dentry *dentry, struct nameidata *nd)
 	struct files_struct *files;
 	const struct cred *cred;
 
-	if (nd && nd->flags & LOOKUP_RCU)
+	if (flags & LOOKUP_RCU)
 		return -ECHILD;
 
 	inode = dentry->d_inode;
@@ -1934,7 +1907,7 @@ static struct dentry *proc_fd_instantiate(struct inode *dir,
 	d_set_d_op(dentry, &tid_fd_dentry_operations);
 	d_add(dentry, inode);
 	/* Close the race of the process dying before we return the dentry */
-	if (tid_fd_revalidate(dentry, NULL))
+	if (tid_fd_revalidate(dentry, 0))
 		error = NULL;
 
  out:
@@ -2021,7 +1994,7 @@ out_no_task:
 }
 
 static struct dentry *proc_lookupfd(struct inode *dir, struct dentry *dentry,
-				    struct nameidata *nd)
+				    unsigned int flags)
 {
 	return proc_lookupfd_common(dir, dentry, proc_fd_instantiate);
 }
@@ -2068,7 +2041,7 @@ static int dname_to_vma_addr(struct dentry *dentry,
 	return 0;
 }
 
-static int map_files_d_revalidate(struct dentry *dentry, struct nameidata *nd)
+static int map_files_d_revalidate(struct dentry *dentry, unsigned int flags)
 {
 	unsigned long vm_start, vm_end;
 	bool exact_vma_exists = false;
@@ -2078,7 +2051,7 @@ static int map_files_d_revalidate(struct dentry *dentry, struct nameidata *nd)
 	struct inode *inode;
 	int status = 0;
 
-	if (nd && nd->flags & LOOKUP_RCU)
+	if (flags & LOOKUP_RCU)
 		return -ECHILD;
 
 	if (!capable(CAP_SYS_ADMIN)) {
@@ -2214,7 +2187,7 @@ proc_map_files_instantiate(struct inode *dir, struct dentry *dentry,
 }
 
 static struct dentry *proc_map_files_lookup(struct inode *dir,
-		struct dentry *dentry, struct nameidata *nd)
+		struct dentry *dentry, unsigned int flags)
 {
 	unsigned long vm_start, vm_end;
 	struct vm_area_struct *vma;
@@ -2448,7 +2421,7 @@ static struct dentry *proc_fdinfo_instantiate(struct inode *dir,
 	d_set_d_op(dentry, &tid_fd_dentry_operations);
 	d_add(dentry, inode);
 	/* Close the race of the process dying before we return the dentry */
-	if (tid_fd_revalidate(dentry, NULL))
+	if (tid_fd_revalidate(dentry, 0))
 		error = NULL;
 
  out:
@@ -2457,7 +2430,7 @@ static struct dentry *proc_fdinfo_instantiate(struct inode *dir,
 
 static struct dentry *proc_lookupfdinfo(struct inode *dir,
 					struct dentry *dentry,
-					struct nameidata *nd)
+					unsigned int flags)
 {
 	return proc_lookupfd_common(dir, dentry, proc_fdinfo_instantiate);
 }
@@ -2507,7 +2480,7 @@ static struct dentry *proc_pident_instantiate(struct inode *dir,
 	d_set_d_op(dentry, &pid_dentry_operations);
 	d_add(dentry, inode);
 	/* Close the race of the process dying before we return the dentry */
-	if (pid_revalidate(dentry, NULL))
+	if (pid_revalidate(dentry, 0))
 		error = NULL;
 out:
 	return error;
@@ -2707,7 +2680,7 @@ static const struct file_operations proc_attr_dir_operations = {
 };
 
 static struct dentry *proc_attr_dir_lookup(struct inode *dir,
-				struct dentry *dentry, struct nameidata *nd)
+				struct dentry *dentry, unsigned int flags)
 {
 	return proc_pident_lookup(dir, dentry,
 				  attr_dir_stuff, ARRAY_SIZE(attr_dir_stuff));
@@ -3062,7 +3035,6 @@ static const struct pid_entry tgid_base_stuff[] = {
 #ifdef CONFIG_PROC_PAGE_MONITOR
 	REG("clear_refs", S_IWUSR, proc_clear_refs_operations),
 	REG("smaps",      S_IRUGO, proc_pid_smaps_operations),
-	REG("smaps_simple", S_IRUGO, proc_pid_smaps_simple_operations),
 	REG("pagemap",    S_IRUGO, proc_pagemap_operations),
 #endif
 #ifdef CONFIG_SECURITY
@@ -3087,11 +3059,8 @@ static const struct pid_entry tgid_base_stuff[] = {
 	REG("cgroup",  S_IRUGO, proc_cgroup_operations),
 #endif
 	INF("oom_score",  S_IRUGO, proc_oom_score),
-	REG("oom_adj",    S_IRUSR, proc_oom_adjust_operations),
-	REG("oom_score_adj", S_IRUSR, proc_oom_score_adj_operations),
-#ifdef CONFIG_SAMP_HOTNESS
-	REG("hotness_adj", S_IWUGO, proc_hotness_adjust_operations),
-#endif
+	ANDROID("oom_adj",S_IRUGO|S_IWUSR, oom_adjust),
+	REG("oom_score_adj", S_IRUGO|S_IWUSR, proc_oom_score_adj_operations),
 #ifdef CONFIG_AUDITSYSCALL
 	REG("loginuid",   S_IWUSR|S_IRUGO, proc_loginuid_operations),
 	REG("sessionid",  S_IRUGO, proc_sessionid_operations),
@@ -3123,7 +3092,8 @@ static const struct file_operations proc_tgid_base_operations = {
 	.llseek		= default_llseek,
 };
 
-static struct dentry *proc_tgid_base_lookup(struct inode *dir, struct dentry *dentry, struct nameidata *nd){
+static struct dentry *proc_tgid_base_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags)
+{
 	return proc_pident_lookup(dir, dentry,
 				  tgid_base_stuff, ARRAY_SIZE(tgid_base_stuff));
 }
@@ -3246,13 +3216,13 @@ static struct dentry *proc_pid_instantiate(struct inode *dir,
 
 	d_add(dentry, inode);
 	/* Close the race of the process dying before we return the dentry */
-	if (pid_revalidate(dentry, NULL))
+	if (pid_revalidate(dentry, 0))
 		error = NULL;
 out:
 	return error;
 }
 
-struct dentry *proc_pid_lookup(struct inode *dir, struct dentry * dentry, struct nameidata *nd)
+struct dentry *proc_pid_lookup(struct inode *dir, struct dentry * dentry, unsigned int flags)
 {
 	struct dentry *result;
 	struct task_struct *task;
@@ -3448,8 +3418,8 @@ static const struct pid_entry tid_base_stuff[] = {
 	REG("cgroup",  S_IRUGO, proc_cgroup_operations),
 #endif
 	INF("oom_score", S_IRUGO, proc_oom_score),
-	REG("oom_adj",   S_IRUSR, proc_oom_adjust_operations),
-	REG("oom_score_adj", S_IRUSR, proc_oom_score_adj_operations),
+	REG("oom_adj",   S_IRUGO|S_IWUSR, proc_oom_adjust_operations),
+	REG("oom_score_adj", S_IRUGO|S_IWUSR, proc_oom_score_adj_operations),
 #ifdef CONFIG_AUDITSYSCALL
 	REG("loginuid",  S_IWUSR|S_IRUGO, proc_loginuid_operations),
 	REG("sessionid",  S_IRUGO, proc_sessionid_operations),
@@ -3472,7 +3442,8 @@ static int proc_tid_base_readdir(struct file * filp,
 				   tid_base_stuff,ARRAY_SIZE(tid_base_stuff));
 }
 
-static struct dentry *proc_tid_base_lookup(struct inode *dir, struct dentry *dentry, struct nameidata *nd){
+static struct dentry *proc_tid_base_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags)
+{
 	return proc_pident_lookup(dir, dentry,
 				  tid_base_stuff, ARRAY_SIZE(tid_base_stuff));
 }
@@ -3510,13 +3481,13 @@ static struct dentry *proc_task_instantiate(struct inode *dir,
 
 	d_add(dentry, inode);
 	/* Close the race of the process dying before we return the dentry */
-	if (pid_revalidate(dentry, NULL))
+	if (pid_revalidate(dentry, 0))
 		error = NULL;
 out:
 	return error;
 }
 
-static struct dentry *proc_task_lookup(struct inode *dir, struct dentry * dentry, struct nameidata *nd)
+static struct dentry *proc_task_lookup(struct inode *dir, struct dentry * dentry, unsigned int flags)
 {
 	struct dentry *result = ERR_PTR(-ENOENT);
 	struct task_struct *task;

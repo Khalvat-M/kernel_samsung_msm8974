@@ -180,7 +180,6 @@ static int __init cpubw_probe(struct platform_device *pdev)
 		for (i = 0; i < len; i++)
 			p->freq_table[i] = data[i];
 		p->max_state = len;
-		p->initial_freq = data[len-1];
 	}
 
 	bus_client = msm_bus_scale_register_client(&bw_data);
@@ -213,7 +212,8 @@ static struct platform_driver cpubw_driver = {
 
 static int __init cpubw_init(void)
 {
-	return platform_driver_probe(&cpubw_driver, cpubw_probe);
+	platform_driver_probe(&cpubw_driver, cpubw_probe);
+	return 0;
 }
 device_initcall(cpubw_init);
 

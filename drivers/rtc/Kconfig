@@ -94,6 +94,23 @@ config RTC_INTF_DEV
 
 	  If unsure, say Y.
 
+config RTC_INTF_ALARM
+	bool "Android alarm driver"
+	depends on RTC_CLASS
+	default y
+	help
+	  Provides non-wakeup and rtc backed wakeup alarms based on rtc or
+	  elapsed realtime, and a non-wakeup alarm on the monotonic clock.
+	  Also provides an interface to set the wall time which must be used
+	  for elapsed realtime to work.
+
+config RTC_INTF_ALARM_DEV
+	bool "Android alarm device"
+	depends on RTC_INTF_ALARM
+	default y
+	help
+	  Exports the alarm interface to user-space.
+
 config RTC_INTF_DEV_UIE_EMUL
 	bool "RTC UIE emulation on dev interface"
 	depends on RTC_INTF_DEV
@@ -1126,15 +1143,5 @@ config RTC_DRV_QPNP
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called qpnp-rtc.
-
-config PM8926_BATTERY_CHECK_INTERRUPT
-        bool "Battery removal check by PM8926 interrupt "
-	depends on RTC_DRV_QPNP
-        default n
-        help
-          Say Y to include support for PM8926 battery removal interrupt support
-          Enable this feature to implement battery removal check by
-	  PMIC interrupt for SAMSUNG battery driver.
-
 
 endif # RTC_CLASS

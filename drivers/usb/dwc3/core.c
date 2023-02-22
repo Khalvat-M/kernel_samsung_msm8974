@@ -69,23 +69,6 @@ MODULE_PARM_DESC(maximum_speed, "Maximum supported speed.");
 
 static DECLARE_BITMAP(dwc3_devs, DWC3_DEVS_POSSIBLE);
 
-#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_F_PROJECT) || defined(CONFIG_SEC_K_PROJECT)
-static void sec_reconnect_work(struct work_struct *data)
-{
-	struct dwc3 *udc = container_of(data, struct dwc3, reconnect_work);
-
-	usb_gadget_disconnect(&udc->gadget);
-	printk(KERN_ERR"usb: Disconnected in case of Super speed support \n");
-	mdelay(1);
-	usb_gadget_connect(&udc->gadget);
-
-}
-#define WORK_INIT(udc) \
-INIT_WORK(&udc->reconnect_work, sec_reconnect_work);
-#else
-#define WORK_INIT(udc)
-#endif
-
 int dwc3_get_device_id(void)
 {
 	int		id;
@@ -133,22 +116,32 @@ void dwc3_set_mode(struct dwc3 *dwc, u32 mode)
 	 * if it failed previously to operate in SS mode.
 	 */
 	reg |= DWC3_GCTL_U2RSTECN;
-	if (mode == DWC3_GCTL_PRTCAP_HOST) {
+	reg &= ~(DWC3_GCTL_SOFITPSYNC);
+	reg &= ~(DWC3_GCTL_PWRDNSCALEMASK);
+	reg |= DWC3_GCTL_PWRDNSCALE(2);
+	reg |= DWC3_GCTL_U2EXIT_LFPS;
+	dwc3_writel(dwc->regs, DWC3_GCTL, reg);
+
+	if (mode == DWC3_GCTL_PRTCAP_OTG || mode == DWC3_GCTL_PRTCAP_HOST) {
 		/*
 		 * Allow ITP generated off of ref clk based counter instead
 		 * of UTMI/ULPI clk based counter, when superspeed only is
 		 * active so that UTMI/ULPI PHY can be suspened.
+		 *
+		 * Starting with revision 2.50A, GFLADJ_REFCLK_LPM_SEL is used
+		 * instead.
 		 */
-		reg |= DWC3_GCTL_SOFITPSYNC;
-		reg &= ~(DWC3_GCTL_PWRDNSCALEMASK);
-		reg |= DWC3_GCTL_PWRDNSCALE(2);
-	} else if (mode == DWC3_GCTL_PRTCAP_DEVICE) {
-		reg &= ~(DWC3_GCTL_PWRDNSCALEMASK);
-		reg |= DWC3_GCTL_PWRDNSCALE(2);
-		reg &= ~(DWC3_GCTL_SOFITPSYNC);
+		if (dwc->revision < DWC3_REVISION_250A) {
+			reg = dwc3_readl(dwc->regs, DWC3_GCTL);
+			reg |= DWC3_GCTL_SOFITPSYNC;
+			dwc3_writel(dwc->regs, DWC3_GCTL, reg);
+		} else {
+			reg = dwc3_readl(dwc->regs, DWC3_GFLADJ);
+			reg |= DWC3_GFLADJ_REFCLK_LPM_SEL;
+			dwc3_writel(dwc->regs, DWC3_GFLADJ, reg);
+		}
 	}
-	reg |= DWC3_GCTL_U2EXIT_LFPS;
-	dwc3_writel(dwc->regs, DWC3_GCTL, reg);
+
 	reg = dwc3_readl(dwc->regs, DWC3_GUSB3PIPECTL(0));
 	reg |= DWC3_GUSB3PIPECTL_SUSPHY;
 	dwc3_writel(dwc->regs, DWC3_GUSB3PIPECTL(0), reg);
@@ -318,7 +311,7 @@ int dwc3_event_buffers_setup(struct dwc3 *dwc)
 
 	for (n = 0; n < dwc->num_event_buffers; n++) {
 		evt = dwc->ev_buffs[n];
-		dev_dbg(dwc->dev, "Event buf %pK dma %08llx length %d\n",
+		dev_dbg(dwc->dev, "Event buf %p dma %08llx length %d\n",
 				evt->buf, (unsigned long long) evt->dma,
 				evt->length);
 
@@ -644,11 +637,6 @@ static int __devinit dwc3_probe(struct platform_device *pdev)
 	else
 		dwc->maximum_speed = DWC3_DCFG_SUPERSPEED;
 
-#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_F_PROJECT) || defined(CONFIG_SEC_K_PROJECT)
-	dwc->speed_limit = dwc->maximum_speed;
-	dwc->ss_host_avail = -1;
-#endif
-
 	dwc->needs_fifo_resize = of_property_read_bool(node, "tx-fifo-resize");
 	host_only_mode = of_property_read_bool(node, "host-only-mode");
 
@@ -724,9 +712,6 @@ static int __devinit dwc3_probe(struct platform_device *pdev)
 
 	dwc3_notify_event(dwc, DWC3_CONTROLLER_POST_INITIALIZATION_EVENT);
 
-#if defined(CONFIG_SEC_H_PROJECT) || defined(CONFIG_SEC_F_PROJECT) || defined(CONFIG_SEC_K_PROJECT)
-	WORK_INIT(dwc);
-#endif
 	return 0;
 
 err2:

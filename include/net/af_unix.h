@@ -6,18 +6,19 @@
 #include <linux/mutex.h>
 #include <net/sock.h>
 
-void unix_inflight(struct user_struct *user, struct file *fp);
-void unix_notinflight(struct user_struct *user, struct file *fp);
+extern void unix_inflight(struct user_struct *user, struct file *fp);
+extern void unix_notinflight(struct user_struct *user, struct file *fp);
 extern void unix_gc(void);
 extern void wait_for_unix_gc(void);
 extern struct sock *unix_get_socket(struct file *filp);
 extern struct sock *unix_peer_get(struct sock *);
 
 #define UNIX_HASH_SIZE	256
+#define UNIX_HASH_BITS	8
 
 extern unsigned int unix_tot_inflight;
 extern spinlock_t unix_table_lock;
-extern struct hlist_head unix_socket_table[UNIX_HASH_SIZE + 1];
+extern struct hlist_head unix_socket_table[2 * UNIX_HASH_SIZE];
 
 struct unix_address {
 	atomic_t	refcnt;

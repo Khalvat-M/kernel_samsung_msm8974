@@ -166,7 +166,7 @@ static inline void task_state(struct seq_file *m, struct pid_namespace *ns,
 	struct fdtable *fdt = NULL;
 	const struct cred *cred;
 	pid_t ppid = 0, tpid = 0;
-        struct task_struct *leader = NULL;
+	struct task_struct *leader = NULL;
 
 	rcu_read_lock();
 	if (pid_alive(p)) {
@@ -174,7 +174,7 @@ static inline void task_state(struct seq_file *m, struct pid_namespace *ns,
 		if (tracer)
 			tpid = task_pid_nr_ns(tracer, ns);
 		ppid = task_tgid_nr_ns(rcu_dereference(p->real_parent), ns);
-                leader = p->group_leader;
+		leader = p->group_leader;
 	}
 	cred = get_task_cred(p);
 	seq_printf(m,

@@ -145,14 +145,6 @@ struct dx_map_entry
 	u16 size;
 };
 
-/*
- * This goes at the end of each htree block.
- */
-struct dx_tail {
-	u32 dt_reserved;
-	__le32 dt_checksum;	/* crc32c(uuid+inum+dirblock) */
-};
-
 static inline ext4_lblk_t dx_get_block(struct dx_entry *entry);
 static void dx_set_block(struct dx_entry *entry, ext4_lblk_t value);
 static inline unsigned dx_get_hash(struct dx_entry *entry);
@@ -824,7 +816,7 @@ static inline int search_dirblock(struct buffer_head *bh,
 		/* do minimal checking `by hand' */
 
 		if ((char *) de + namelen <= dlimit &&
-			ext4_match (namelen, name, de)) {
+		    ext4_match (namelen, name, de)) {
 			/* found a match - just to be sure, do a full check */
 			if (ext4_check_dir_entry(dir, NULL, de, bh, offset))
 				return -1;
@@ -1033,7 +1025,7 @@ errout:
 	return NULL;
 }
 
-static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, struct nameidata *nd)
+static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags)
 {
 	struct inode *inode;
 	struct ext4_dir_entry_2 *de;
@@ -1048,17 +1040,11 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, stru
 	inode = NULL;
 	if (bh) {
 		__u32 ino = le32_to_cpu(de->inode);
+		brelse(bh);
 		if (!ext4_valid_inum(dir->i_sb, ino)) {
-			printk(KERN_ERR "Name of directory entry has bad"
-				"inode# : %s\n", de->name);
-			print_bh(dir->i_sb, bh, 0, EXT4_BLOCK_SIZE(dir->i_sb));
-			brelse(bh);
-
 			EXT4_ERROR_INODE(dir, "bad inode number: %u", ino);
 			return ERR_PTR(-EIO);
 		}
-		brelse(bh);
-
 		if (unlikely(ino == dir->i_ino)) {
 			EXT4_ERROR_INODE(dir, "'%.*s' linked to parent dir",
 					 dentry->d_name.len,
@@ -1068,8 +1054,8 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, stru
 		inode = ext4_iget_normal(dir->i_sb, ino);
 		if (inode == ERR_PTR(-ESTALE)) {
 			EXT4_ERROR_INODE(dir,
-			 "deleted inode referenced: %u  at parent inode : %lu",
-					 ino, dir->i_ino);
+					 "deleted inode referenced: %u",
+					 ino);
 			return ERR_PTR(-EIO);
 		}
 	}
@@ -1080,10 +1066,7 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, stru
 struct dentry *ext4_get_parent(struct dentry *child)
 {
 	__u32 ino;
-	static const struct qstr dotdot = {
-		.name = "..",
-		.len = 2,
-	};
+	static const struct qstr dotdot = QSTR_INIT("..", 2);
 	struct ext4_dir_entry_2 * de;
 	struct buffer_head *bh;
 
@@ -1776,33 +1759,33 @@ static int ext4_add_nondir(handle_t *handle,
  * with d_instantiate().
  */
 static int ext4_create(struct inode *dir, struct dentry *dentry, umode_t mode,
-		       struct nameidata *nd)
+		       bool excl)
 {
 	handle_t *handle;
 	struct inode *inode;
-	int err, credits, retries = 0;
+	int err, retries = 0;
 
 	dquot_initialize(dir);
 
-	credits = (EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
-		   EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
-		   EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
-
 retry:
-	inode = ext4_new_inode_start_handle(dir, mode, &dentry->d_name, 0,
-					    NULL, credits);
-	handle = ext4_journal_current_handle();
+	handle = ext4_journal_start(dir, EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
+					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
+					EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
+	if (IS_ERR(handle))
+		return PTR_ERR(handle);
+
+	if (IS_DIRSYNC(dir))
+		ext4_handle_sync(handle);
+
+	inode = ext4_new_inode(handle, dir, mode, &dentry->d_name, 0, NULL);
 	err = PTR_ERR(inode);
 	if (!IS_ERR(inode)) {
 		inode->i_op = &ext4_file_inode_operations;
 		inode->i_fop = &ext4_file_operations;
 		ext4_set_aops(inode);
 		err = ext4_add_nondir(handle, dentry, inode);
-		if (!err && IS_DIRSYNC(dir))
-			ext4_handle_sync(handle);
 	}
-	if (handle)
-		ext4_journal_stop(handle);
+	ext4_journal_stop(handle);
 	if (err == -ENOSPC && ext4_should_retry_alloc(dir->i_sb, &retries))
 		goto retry;
 	return err;
@@ -1813,33 +1796,74 @@ static int ext4_mknod(struct inode *dir, struct dentry *dentry,
 {
 	handle_t *handle;
 	struct inode *inode;
-	int err, credits, retries = 0;
+	int err, retries = 0;
 
 	if (!new_valid_dev(rdev))
 		return -EINVAL;
 
 	dquot_initialize(dir);
 
-	credits = (EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
-		   EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
-		   EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
-
 retry:
-	inode = ext4_new_inode_start_handle(dir, mode, &dentry->d_name, 0,
-					    NULL, credits);
-	handle = ext4_journal_current_handle();
+	handle = ext4_journal_start(dir, EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
+					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
+					EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
+	if (IS_ERR(handle))
+		return PTR_ERR(handle);
+
+	if (IS_DIRSYNC(dir))
+		ext4_handle_sync(handle);
+
+	inode = ext4_new_inode(handle, dir, mode, &dentry->d_name, 0, NULL);
 	err = PTR_ERR(inode);
 	if (!IS_ERR(inode)) {
 		init_special_inode(inode, inode->i_mode, rdev);
 		inode->i_op = &ext4_special_inode_operations;
 		err = ext4_add_nondir(handle, dentry, inode);
-		if (!err && IS_DIRSYNC(dir))
-			ext4_handle_sync(handle);
+	}
+	ext4_journal_stop(handle);
+	if (err == -ENOSPC && ext4_should_retry_alloc(dir->i_sb, &retries))
+		goto retry;
+	return err;
+}
+
+static int ext4_tmpfile(struct inode *dir, struct dentry *dentry, umode_t mode)
+{
+	handle_t *handle;
+	struct inode *inode;
+	int err, retries = 0;
+
+	dquot_initialize(dir);
+
+retry:
+	handle = ext4_journal_start(dir, EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb) +
+			  4 + EXT4_XATTR_TRANS_BLOCKS);
+
+	if (IS_ERR(handle))
+		return PTR_ERR(handle);
+	if (IS_DIRSYNC(dir))
+		ext4_handle_sync(handle);
+
+	inode = ext4_new_inode(handle, dir, mode, NULL, 0, NULL);
+	err = PTR_ERR(inode);
+	if (!IS_ERR(inode)) {
+		inode->i_op = &ext4_file_inode_operations;
+		inode->i_fop = &ext4_file_operations;
+		ext4_set_aops(inode);
+		d_tmpfile(dentry, inode);
+		err = ext4_orphan_add(handle, inode);
+		if (err)
+			goto err_unlock_inode;
+		mark_inode_dirty(inode);
+		unlock_new_inode(inode);
 	}
 	if (handle)
 		ext4_journal_stop(handle);
 	if (err == -ENOSPC && ext4_should_retry_alloc(dir->i_sb, &retries))
 		goto retry;
+	return err;
+err_unlock_inode:
+	ext4_journal_stop(handle);
+	unlock_new_inode(inode);
 	return err;
 }
 
@@ -1850,22 +1874,25 @@ static int ext4_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
 	struct buffer_head *dir_block = NULL;
 	struct ext4_dir_entry_2 *de;
 	unsigned int blocksize = dir->i_sb->s_blocksize;
-	int err, credits, retries = 0;
+	int err, retries = 0;
 
 	if (EXT4_DIR_LINK_MAX(dir))
 		return -EMLINK;
 
 	dquot_initialize(dir);
 
-	credits = (EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
-		   EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
-		   EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
-
 retry:
-	inode = ext4_new_inode_start_handle(dir, S_IFDIR | mode,
-					    &dentry->d_name,
-					    0, NULL, credits);
-	handle = ext4_journal_current_handle();
+	handle = ext4_journal_start(dir, EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
+					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3 +
+					EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb));
+	if (IS_ERR(handle))
+		return PTR_ERR(handle);
+
+	if (IS_DIRSYNC(dir))
+		ext4_handle_sync(handle);
+
+	inode = ext4_new_inode(handle, dir, S_IFDIR | mode,
+			       &dentry->d_name, 0, NULL);
 	err = PTR_ERR(inode);
 	if (IS_ERR(inode))
 		goto out_stop;
@@ -1917,12 +1944,9 @@ out_clear_inode:
 		goto out_clear_inode;
 	d_instantiate(dentry, inode);
 	unlock_new_inode(inode);
-	if (IS_DIRSYNC(dir))
-		ext4_handle_sync(handle);
 out_stop:
 	brelse(dir_block);
-	if (handle)
-		ext4_journal_stop(handle);
+	ext4_journal_stop(handle);
 	if (err == -ENOSPC && ext4_should_retry_alloc(dir->i_sb, &retries))
 		goto retry;
 	return err;
@@ -2050,7 +2074,7 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
 	/* Insert this inode at the head of the on-disk orphan list... */
 	NEXT_ORPHAN(inode) = le32_to_cpu(EXT4_SB(sb)->s_es->s_last_orphan);
 	EXT4_SB(sb)->s_es->s_last_orphan = cpu_to_le32(inode->i_ino);
-	err = ext4_handle_dirty_super_now(handle, sb);
+	err = ext4_handle_dirty_metadata(handle, NULL, EXT4_SB(sb)->s_sbh);
 	rc = ext4_mark_iloc_dirty(handle, inode, &iloc);
 	if (!err)
 		err = rc;
@@ -2089,7 +2113,7 @@ int ext4_orphan_del(handle_t *handle, struct inode *inode)
 	struct ext4_iloc iloc;
 	int err = 0;
 
-	if (!EXT4_SB(inode->i_sb)->s_journal &&
+	if ((!EXT4_SB(inode->i_sb)->s_journal) &&
 	    !(EXT4_SB(inode->i_sb)->s_mount_state & EXT4_ORPHAN_FS))
 		return 0;
 
@@ -2123,7 +2147,7 @@ int ext4_orphan_del(handle_t *handle, struct inode *inode)
 		if (err)
 			goto out_brelse;
 		sbi->s_es->s_last_orphan = cpu_to_le32(ino_next);
-		err = ext4_handle_dirty_super_now(handle, inode->i_sb);
+		err = ext4_handle_dirty_metadata(handle, NULL, sbi->s_sbh);
 	} else {
 		struct ext4_iloc iloc2;
 		struct inode *i_prev =
@@ -2159,12 +2183,16 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
 	struct inode *inode;
 	struct buffer_head *bh;
 	struct ext4_dir_entry_2 *de;
-	handle_t *handle = NULL;
+	handle_t *handle;
 
 	/* Initialize quotas before so that eventual writes go in
 	 * separate transaction */
 	dquot_initialize(dir);
 	dquot_initialize(dentry->d_inode);
+
+	handle = ext4_journal_start(dir, EXT4_DELETE_TRANS_BLOCKS(dir->i_sb));
+	if (IS_ERR(handle))
+		return PTR_ERR(handle);
 
 	retval = -ENOENT;
 	bh = ext4_find_entry(dir, &dentry->d_name, &de);
@@ -2172,6 +2200,9 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
 		return PTR_ERR(bh);
 	if (!bh)
 		goto end_rmdir;
+
+	if (IS_DIRSYNC(dir))
+		ext4_handle_sync(handle);
 
 	inode = dentry->d_inode;
 
@@ -2182,16 +2213,6 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
 	retval = -ENOTEMPTY;
 	if (!empty_dir(inode))
 		goto end_rmdir;
-
-	handle = ext4_journal_start(dir, EXT4_DELETE_TRANS_BLOCKS(dir->i_sb));
-	if (IS_ERR(handle)) {
-		retval = PTR_ERR(handle);
-		handle = NULL;
-		goto end_rmdir;
-	}
-
-	if (IS_DIRSYNC(dir))
-		ext4_handle_sync(handle);
 
 	retval = ext4_delete_entry(handle, dir, de, bh);
 	if (retval)
@@ -2214,9 +2235,8 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
 	ext4_mark_inode_dirty(handle, dir);
 
 end_rmdir:
+	ext4_journal_stop(handle);
 	brelse(bh);
-	if (handle)
-		ext4_journal_stop(handle);
 	return retval;
 }
 
@@ -2226,13 +2246,20 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
 	struct inode *inode;
 	struct buffer_head *bh;
 	struct ext4_dir_entry_2 *de;
-	handle_t *handle = NULL;
+	handle_t *handle;
 
 	trace_ext4_unlink_enter(dir, dentry);
 	/* Initialize quotas before so that eventual writes go
 	 * in separate transaction */
 	dquot_initialize(dir);
 	dquot_initialize(dentry->d_inode);
+
+	handle = ext4_journal_start(dir, EXT4_DELETE_TRANS_BLOCKS(dir->i_sb));
+	if (IS_ERR(handle))
+		return PTR_ERR(handle);
+
+	if (IS_DIRSYNC(dir))
+		ext4_handle_sync(handle);
 
 	retval = -ENOENT;
 	bh = ext4_find_entry(dir, &dentry->d_name, &de);
@@ -2246,16 +2273,6 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
 	retval = -EIO;
 	if (le32_to_cpu(de->inode) != inode->i_ino)
 		goto end_unlink;
-
-	handle = ext4_journal_start(dir, EXT4_DELETE_TRANS_BLOCKS(dir->i_sb));
-	if (IS_ERR(handle)) {
-		retval = PTR_ERR(handle);
-		handle = NULL;
-		goto end_unlink;
-	}
-
-	if (IS_DIRSYNC(dir))
-		ext4_handle_sync(handle);
 
 	if (!inode->i_nlink) {
 		ext4_warning(inode->i_sb,
@@ -2273,22 +2290,12 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
 	if (!inode->i_nlink)
 		ext4_orphan_add(handle, inode);
 	inode->i_ctime = ext4_current_time(inode);
-	/* log unlinker's uid or first 4 bytes of comm 
-	 * to ext4_inode->i_version_hi */
-	inode->i_version &= 0x00000000FFFFFFFF;
-	if(current_uid()) {
-		inode->i_version |= (u64)current_uid() << 32;
-	} else {
-		u32 *comm = (u32 *)current->comm;
-		inode->i_version |= (u64)(*comm) << 32;
-	}
 	ext4_mark_inode_dirty(handle, inode);
 	retval = 0;
 
 end_unlink:
+	ext4_journal_stop(handle);
 	brelse(bh);
-	if (handle)
-		ext4_journal_stop(handle);
 	trace_ext4_unlink_exit(dentry, retval);
 	return retval;
 }
@@ -2328,11 +2335,15 @@ static int ext4_symlink(struct inode *dir,
 			  EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb);
 	}
 retry:
-	inode = ext4_new_inode_start_handle(dir, S_IFLNK|S_IRWXUGO,
-					    &dentry->d_name, 0, NULL,
-					    credits);
-	handle = ext4_journal_current_handle();
+	handle = ext4_journal_start(dir, credits);
+	if (IS_ERR(handle))
+		return PTR_ERR(handle);
 
+	if (IS_DIRSYNC(dir))
+		ext4_handle_sync(handle);
+
+	inode = ext4_new_inode(handle, dir, S_IFLNK|S_IRWXUGO,
+			       &dentry->d_name, 0, NULL);
 	err = PTR_ERR(inode);
 	if (IS_ERR(inode))
 		goto out_stop;
@@ -2385,11 +2396,8 @@ retry:
 	}
 	EXT4_I(inode)->i_disksize = inode->i_size;
 	err = ext4_add_nondir(handle, dentry, inode);
-	if (!err && IS_DIRSYNC(dir))
-		ext4_handle_sync(handle);
 out_stop:
-	if (handle)
-		ext4_journal_stop(handle);
+	ext4_journal_stop(handle);
 	if (err == -ENOSPC && ext4_should_retry_alloc(dir->i_sb, &retries))
 		goto retry;
 	return err;
@@ -2413,7 +2421,7 @@ static int ext4_link(struct dentry *old_dentry,
 
 retry:
 	handle = ext4_journal_start(dir, EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
-					EXT4_INDEX_EXTRA_TRANS_BLOCKS);
+					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 1);
 	if (IS_ERR(handle))
 		return PTR_ERR(handle);
 
@@ -2427,6 +2435,11 @@ retry:
 	err = ext4_add_entry(handle, dentry, inode);
 	if (!err) {
 		ext4_mark_inode_dirty(handle, inode);
+		/* this can happen only for tmpfile being
+		 * linked the first time
+		 */
+		if (inode->i_nlink == 1)
+			ext4_orphan_del(handle, inode);
 		d_instantiate(dentry, inode);
 	} else {
 		drop_nlink(inode);
@@ -2448,7 +2461,7 @@ retry:
 static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
 		       struct inode *new_dir, struct dentry *new_dentry)
 {
-	handle_t *handle = NULL;
+	handle_t *handle;
 	struct inode *old_inode, *new_inode;
 	struct buffer_head *old_bh, *new_bh, *dir_bh;
 	struct ext4_dir_entry_2 *old_de, *new_de;
@@ -2463,6 +2476,14 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
 	 * in separate transaction */
 	if (new_dentry->d_inode)
 		dquot_initialize(new_dentry->d_inode);
+	handle = ext4_journal_start(old_dir, 2 *
+					EXT4_DATA_TRANS_BLOCKS(old_dir->i_sb) +
+					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 2);
+	if (IS_ERR(handle))
+		return PTR_ERR(handle);
+
+	if (IS_DIRSYNC(old_dir) || IS_DIRSYNC(new_dir))
+		ext4_handle_sync(handle);
 
 	old_bh = ext4_find_entry(old_dir, &old_dentry->d_name, &old_de);
 	if (IS_ERR(old_bh))
@@ -2491,16 +2512,6 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
 			new_bh = NULL;
 		}
 	}
-
-	handle = ext4_journal_start(old_dir,
-		(2 * EXT4_DATA_TRANS_BLOCKS(old_dir->i_sb) +
-		 EXT4_INDEX_EXTRA_TRANS_BLOCKS + 2));
-	if (IS_ERR(handle))
-		return PTR_ERR(handle);
-
-	if (IS_DIRSYNC(old_dir) || IS_DIRSYNC(new_dir))
-		ext4_handle_sync(handle);
-
 	if (S_ISDIR(old_inode->i_mode)) {
 		if (new_inode) {
 			retval = -ENOTEMPTY;
@@ -2627,8 +2638,7 @@ end_rename:
 	brelse(dir_bh);
 	brelse(old_bh);
 	brelse(new_bh);
-	if (handle)
-		ext4_journal_stop(handle);
+	ext4_journal_stop(handle);
 	if (retval == 0 && force_da_alloc)
 		ext4_alloc_da_blocks(old_inode);
 	return retval;
@@ -2646,6 +2656,7 @@ const struct inode_operations ext4_dir_inode_operations = {
 	.mkdir		= ext4_mkdir,
 	.rmdir		= ext4_rmdir,
 	.mknod		= ext4_mknod,
+	.tmpfile	= ext4_tmpfile,
 	.rename		= ext4_rename,
 	.setattr	= ext4_setattr,
 #ifdef CONFIG_EXT4_FS_XATTR

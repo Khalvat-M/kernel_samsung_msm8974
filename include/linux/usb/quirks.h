@@ -44,6 +44,6 @@
  * Devices with this quirk report their bInterval as the result of this
  * calculation instead of the exponent variable used in the calculation.
  */
-#define USB_QUIRK_LINEAR_UFRAME_INTR_BINTERVAL	0x00000080
+#define USB_QUIRK_LINEAR_UFRAME_INTR_BINTERVAL	0x00000200
 
 #endif /* __LINUX_USB_QUIRKS_H */

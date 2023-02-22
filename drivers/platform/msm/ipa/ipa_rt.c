@@ -104,7 +104,7 @@ static int ipa_generate_rt_hw_rule(enum ipa_ip_type ip,
  * @hdr_sz: header size
  * @max_rt_idx: maximal index
  *
- * Returns:	size on success, negative on failure
+ * Returns:	0 on success, negative on failure
  *
  * caller needs to hold any needed locks to ensure integrity
  *
@@ -192,15 +192,8 @@ int ipa_generate_rt_hw_tbl(enum ipa_ip_type ip, struct ipa_mem_buffer *mem)
 	u8 *rt_tbl_mem_body;
 	int max_rt_idx;
 	int i;
-	int res;
 
-	res = ipa_get_rt_hw_tbl_size(ip, &hdr_sz, &max_rt_idx);
-	if (res < 0) {
-		IPAERR("ipa_get_rt_hw_tbl_size failed %d\n", res);
-		goto error;
-	}
-
-	mem->size = res;
+	mem->size = ipa_get_rt_hw_tbl_size(ip, &hdr_sz, &max_rt_idx);
 	mem->size = (mem->size + IPA_RT_TABLE_MEMORY_ALLIGNMENT) &
 				~IPA_RT_TABLE_MEMORY_ALLIGNMENT;
 
@@ -262,11 +255,7 @@ int ipa_generate_rt_hw_tbl(enum ipa_ip_type ip, struct ipa_mem_buffer *mem)
 					      ((u32)body &
 					      IPA_RT_ENTRY_MEMORY_ALLIGNMENT));
 		} else {
-			if (tbl->sz == 0) {
-				IPAERR("cannot generate 0 size table\n");
-				goto proc_err;
-			}
-
+			WARN_ON(tbl->sz == 0);
 			/* allocate memory for the RT tbl */
 			rt_tbl_mem.size = tbl->sz;
 			rt_tbl_mem.base =
@@ -505,7 +494,7 @@ static struct ipa_rt_tbl *__ipa_add_rt_tbl(enum ipa_ip_type ip,
 		INIT_LIST_HEAD(&entry->link);
 		strlcpy(entry->name, name, IPA_RESOURCE_NAME_MAX);
 		entry->set = set;
-		entry->cookie = IPA_RT_TBL_COOKIE;
+		entry->cookie = IPA_COOKIE;
 		entry->in_sys = (ip == IPA_IP_v4) ?
 			!ipa_ctx->ip4_rt_tbl_lcl : !ipa_ctx->ip6_rt_tbl_lcl;
 		set->tbl_cnt++;
@@ -518,7 +507,6 @@ static struct ipa_rt_tbl *__ipa_add_rt_tbl(enum ipa_ip_type ip,
 		if (ipa_insert(&ipa_ctx->rt_tbl_hdl_tree, node)) {
 			IPAERR("failed to add to tree\n");
 			WARN_ON(1);
-			goto ipa_insert_failed;
 		}
 	} else {
 		kmem_cache_free(ipa_ctx->tree_node_cache, node);
@@ -526,9 +514,6 @@ static struct ipa_rt_tbl *__ipa_add_rt_tbl(enum ipa_ip_type ip,
 
 	return entry;
 
-ipa_insert_failed:
-	set->tbl_cnt--;
-	list_del(&entry->link);
 fail_rt_idx_alloc:
 	entry->cookie = 0;
 	kmem_cache_free(ipa_ctx->rt_tbl_cache, entry);
@@ -543,7 +528,7 @@ static int __ipa_del_rt_tbl(struct ipa_rt_tbl *entry)
 	struct ipa_tree_node *node;
 	enum ipa_ip_type ip = IPA_IP_MAX;
 
-	if (entry == NULL || (entry->cookie != IPA_RT_TBL_COOKIE)) {
+	if (entry == NULL || (entry->cookie != IPA_COOKIE)) {
 		IPAERR("bad parms\n");
 		return -EINVAL;
 	}
@@ -557,10 +542,8 @@ static int __ipa_del_rt_tbl(struct ipa_rt_tbl *entry)
 		ip = IPA_IP_v4;
 	else if (entry->set == &ipa_ctx->rt_tbl_set[IPA_IP_v6])
 		ip = IPA_IP_v6;
-	else {
+	else
 		WARN_ON(1);
-		return -EPERM;
-	}
 
 	if (!entry->in_sys) {
 		list_del(&entry->link);
@@ -594,7 +577,7 @@ static int __ipa_add_rt_rule(enum ipa_ip_type ip, const char *name,
 
 	if (rule->hdr_hdl &&
 	    ((ipa_search(&ipa_ctx->hdr_hdl_tree, rule->hdr_hdl) == NULL) ||
-	     ((struct ipa_hdr_entry *)rule->hdr_hdl)->cookie != IPA_HDR_COOKIE)) {
+	     ((struct ipa_hdr_entry *)rule->hdr_hdl)->cookie != IPA_COOKIE)) {
 		IPAERR("rt rule does not point to valid hdr\n");
 		goto error;
 	}
@@ -606,17 +589,18 @@ static int __ipa_add_rt_rule(enum ipa_ip_type ip, const char *name,
 	}
 
 	tbl = __ipa_add_rt_tbl(ip, name);
-	if (tbl == NULL || (tbl->cookie != IPA_RT_TBL_COOKIE)) {
+	if (tbl == NULL || (tbl->cookie != IPA_COOKIE)) {
 		IPAERR("bad params\n");
 		goto fail_rt_tbl_sanity;
 	}
 	/*
-	 * do not allow any rule to be added at "default" routing
-	 * table
+	 * do not allow any rules to be added at end of the "default" routing
+	 * tables
 	 */
 	if (!strncmp(tbl->name, IPA_DFLT_RT_TBL_NAME, IPA_RESOURCE_NAME_MAX) &&
-	    (tbl->rule_cnt > 0)) {
-		IPAERR_RL("cannot add rules to default rt table\n");
+	    (tbl->rule_cnt > 0) && (at_rear != 0)) {
+		IPAERR("cannot add rule at end of tbl rule_cnt=%d at_rear=%d\n",
+		       tbl->rule_cnt, at_rear);
 		goto fail_rt_tbl_sanity;
 	}
 
@@ -626,7 +610,7 @@ static int __ipa_add_rt_rule(enum ipa_ip_type ip, const char *name,
 		goto fail_rt_tbl_sanity;
 	}
 	INIT_LIST_HEAD(&entry->link);
-	entry->cookie = IPA_RT_RULE_COOKIE;
+	entry->cookie = IPA_COOKIE;
 	entry->rule = *rule;
 	entry->tbl = tbl;
 	entry->hdr = (struct ipa_hdr_entry *)rule->hdr_hdl;
@@ -714,7 +698,7 @@ int __ipa_del_rt_rule(u32 rule_hdl)
 		return -EINVAL;
 	}
 
-	if (entry == NULL || (entry->cookie != IPA_RT_RULE_COOKIE)) {
+	if (entry == NULL || (entry->cookie != IPA_COOKIE)) {
 		IPAERR("bad params\n");
 		return -EINVAL;
 	}
@@ -837,8 +821,6 @@ int ipa_reset_rt(enum ipa_ip_type ip)
 	struct ipa_rt_entry *rule_next;
 	struct ipa_tree_node *node;
 	struct ipa_rt_tbl_set *rset;
-	struct ipa_hdr_entry *hdr_entry;
-	struct ipa_hdr_proc_ctx_entry *hdr_proc_entry;
 
 	if (ip >= IPA_IP_MAX) {
 		IPAERR("bad parm\n");
@@ -875,27 +857,6 @@ int ipa_reset_rt(enum ipa_ip_type ip)
 				continue;
 
 			list_del(&rule->link);
-			if (rule->hdr) {
-				hdr_entry = ipa_id_find(
-					rule->rule.hdr_hdl);
-				if (!hdr_entry ||
-				hdr_entry->cookie != IPA_HDR_COOKIE) {
-					IPAERR_RL(
-					"Header already deleted\n");
-					return -EINVAL;
-				}
-			} else if (rule->proc_ctx) {
-				hdr_proc_entry =
-					ipa_id_find(
-					rule->rule.hdr_proc_ctx_hdl);
-				if (!hdr_proc_entry ||
-					hdr_proc_entry->cookie !=
-						IPA_PROC_HDR_COOKIE) {
-				IPAERR_RL(
-					"Proc entry already deleted\n");
-					return -EINVAL;
-				}
-			}
 			tbl->rule_cnt--;
 			if (rule->hdr)
 				__ipa_release_hdr((u32)rule->hdr);
@@ -964,7 +925,7 @@ int ipa_get_rt_tbl(struct ipa_ioc_get_rt_tbl *lookup)
 	}
 	mutex_lock(&ipa_ctx->lock);
 	entry = __ipa_add_rt_tbl(lookup->ip, lookup->name);
-	if (entry && entry->cookie == IPA_RT_TBL_COOKIE) {
+	if (entry && entry->cookie == IPA_COOKIE) {
 		if (entry->ref_cnt == ((u32)~0U)) {
 			IPAERR("fail: ref count crossed limit\n");
 			goto ret;
@@ -1009,7 +970,7 @@ int ipa_put_rt_tbl(u32 rt_tbl_hdl)
 		goto ret;
 	}
 
-	if (entry == NULL || (entry->cookie != IPA_RT_TBL_COOKIE) ||
+	if (entry == NULL || (entry->cookie != IPA_COOKIE) ||
 			entry->ref_cnt == 0) {
 		IPAERR("bad parms\n");
 		result = -EINVAL;
@@ -1020,11 +981,8 @@ int ipa_put_rt_tbl(u32 rt_tbl_hdl)
 		ip = IPA_IP_v4;
 	else if (entry->set == &ipa_ctx->rt_tbl_set[IPA_IP_v6])
 		ip = IPA_IP_v6;
-	else {
+	else
 		WARN_ON(1);
-		result = -EINVAL;
-		goto ret;
-	}
 
 	entry->ref_cnt--;
 	if (entry->ref_cnt == 0 && entry->rule_cnt == 0) {

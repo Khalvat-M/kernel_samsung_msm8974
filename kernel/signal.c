@@ -271,7 +271,6 @@ void task_clear_jobctl_trapping(struct task_struct *task)
 {
 	if (unlikely(task->jobctl & JOBCTL_TRAPPING)) {
 		task->jobctl &= ~JOBCTL_TRAPPING;
-		smp_mb();	/* advised by wake_up_bit() */
 		wake_up_bit(&task->jobctl, JOBCTL_TRAPPING_BIT);
 	}
 }
@@ -765,14 +764,14 @@ static int kill_ok_by_cred(struct task_struct *t)
 	const struct cred *cred = current_cred();
 	const struct cred *tcred = __task_cred(t);
 
-	if (cred->user->user_ns == tcred->user->user_ns &&
+	if (cred->user_ns == tcred->user_ns &&
 	    (cred->euid == tcred->suid ||
 	     cred->euid == tcred->uid ||
 	     cred->uid  == tcred->suid ||
 	     cred->uid  == tcred->uid))
 		return 1;
 
-	if (ns_capable(tcred->user->user_ns, CAP_KILL))
+	if (ns_capable(tcred->user_ns, CAP_KILL))
 		return 1;
 
 	return 0;
@@ -2212,7 +2211,7 @@ relock:
 	 * Now that we woke up, it's crucial if we're supposed to be
 	 * frozen that we freeze now before running anything substantial.
 	 */
-	try_to_freeze_nowarn();
+	try_to_freeze();
 
 	spin_lock_irq(&sighand->siglock);
 	/*
@@ -2772,7 +2771,7 @@ int do_sigtimedwait(const sigset_t *which, siginfo_t *info,
 		recalc_sigpending();
 		spin_unlock_irq(&tsk->sighand->siglock);
 
-		timeout = freezable_schedule_timeout_interruptible(timeout);
+		timeout = schedule_timeout_interruptible(timeout);
 
 		spin_lock_irq(&tsk->sighand->siglock);
 		__set_task_blocked(tsk, &tsk->real_blocked);

@@ -1735,7 +1735,7 @@ static int adreno_of_get_pdata(struct platform_device *pdev)
 
 	if (adreno_of_read_property(pdev->dev.of_node, "qcom,idle-timeout",
 		&pdata->idle_timeout))
-		pdata->idle_timeout = 80;
+		pdata->idle_timeout = HZ/12;
 
 	pdata->strtstp_sleepwake = of_property_read_bool(pdev->dev.of_node,
 						"qcom,strtstp-sleepwake");
@@ -2125,7 +2125,6 @@ error_clk_off:
  *
  * Power up the GPU and initialize it.  If priority is specified then elevate
  * the thread priority for the duration of the start operation
-
  */
 static int adreno_start(struct kgsl_device *device, int priority)
 {

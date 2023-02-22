@@ -77,6 +77,7 @@ struct fscrypt_info {
 	u8 ci_filename_mode;
 	u8 ci_flags;
 	struct crypto_ablkcipher *ci_ctfm;
+	struct key *ci_keyring_key;
 	u8 ci_master_key[FS_KEY_DESCRIPTOR_SIZE];
 };
 
@@ -162,7 +163,6 @@ struct fscrypt_name {
 	struct fscrypt_str crypto_buf;
 };
 
-#define QSTR_INIT(n, l)		{ .name = n, .len = l }
 #define FSTR_INIT(n, l)		{ .name = n, .len = l }
 #define FSTR_TO_QSTR(f)		QSTR_INIT((f)->name, (f)->len)
 #define fname_name(p)		((p)->disk_name.name)

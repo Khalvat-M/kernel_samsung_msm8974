@@ -260,7 +260,7 @@ static ssize_t snd_info_entry_write(struct file *file, const char __user *buffer
 	struct snd_info_buffer *buf;
 	ssize_t size = 0;
 	loff_t pos;
-	unsigned long realloc_size;	
+	unsigned long realloc_size;
 
 	data = file->private_data;
 	if (snd_BUG_ON(!data))

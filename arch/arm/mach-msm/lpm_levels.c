@@ -18,7 +18,6 @@
 #include <linux/platform_device.h>
 #include <linux/mutex.h>
 #include <linux/cpu.h>
-#include <linux/qpnp/pin.h>
 #include <linux/of.h>
 #include <linux/hrtimer.h>
 #include <linux/ktime.h>
@@ -26,7 +25,6 @@
 #include <linux/suspend.h>
 #include <linux/pm_qos.h>
 #include <linux/of_platform.h>
-#include <linux/of_gpio.h>
 #include <mach/mpm.h>
 #include <mach/cpuidle.h>
 #include <mach/event_timer.h>
@@ -34,18 +32,6 @@
 #include "rpm-notifier.h"
 #include "spm.h"
 #include "idle.h"
-#include "clock.h"
-
-#include <mach/gpiomux.h>
-#include <linux/regulator/consumer.h>
-
-#ifdef CONFIG_SEC_GPIO_DVS
-#include <linux/secgpio_dvs.h>
-#endif
-
-#ifdef CONFIG_GPIO_PCAL6416A
-#include <linux/i2c/pcal6416a.h>
-#endif
 
 #define SCLK_HZ (32768)
 
@@ -137,10 +123,7 @@ module_param_named(
 static int msm_pm_sleep_time_override;
 module_param_named(sleep_time_override,
 	msm_pm_sleep_time_override, int, S_IRUGO | S_IWUSR | S_IWGRP);
-
-static int msm_pm_sleep_sec_debug;
-module_param_named(secdebug,
-	msm_pm_sleep_sec_debug, int, S_IRUGO | S_IWUSR | S_IWGRP);
+static uint64_t suspend_wake_time;
 
 static int num_powered_cores;
 static struct hrtimer lpm_hrtimer;
@@ -362,7 +345,6 @@ static void lpm_system_prepare(struct lpm_system_state *system_state,
 	spin_lock(&system_state->sync_lock);
 	if (index < 0 ||
 			num_powered_cores != system_state->num_cores_in_sync) {
-		lpm_set_l2_mode(system_state, default_l2_mode);
 		spin_unlock(&system_state->sync_lock);
 		return;
 	}
@@ -393,9 +375,10 @@ static void lpm_system_prepare(struct lpm_system_state *system_state,
 			goto bail_system_sleep;
 		}
 
-
+		if (!suspend_wake_time)
+			suspend_wake_time =  msm_pm_sleep_time_override;
 		if (!from_idle)
-			us = USEC_PER_SEC * msm_pm_sleep_time_override;
+			us = USEC_PER_SEC * suspend_wake_time;
 
 		do_div(us, USEC_PER_SEC/SCLK_HZ);
 		sclk = (uint32_t)us;
@@ -472,6 +455,21 @@ s32 msm_cpuidle_get_deep_idle_latency(void)
 	else
 		return level->pwr.latency_us;
 }
+
+void lpm_suspend_wake_time(uint64_t wakeup_time)
+{
+	if (wakeup_time <= 0) {
+		suspend_wake_time = msm_pm_sleep_time_override;
+		return;
+	}
+
+	if (msm_pm_sleep_time_override &&
+			(msm_pm_sleep_time_override < wakeup_time))
+			suspend_wake_time = msm_pm_sleep_time_override;
+	else
+			suspend_wake_time = wakeup_time;
+}
+EXPORT_SYMBOL(lpm_suspend_wake_time);
 
 static int lpm_cpu_callback(struct notifier_block *cpu_nb,
 	unsigned long action, void *hcpu)
@@ -792,7 +790,6 @@ static int lpm_suspend_enter(suspend_state_t state)
 	if (i < 0)
 		return -EINVAL;
 
-	clock_debug_print_enabled();
 	lpm_enter_low_power(&sys_state, i,  false);
 
 	return 0;
@@ -807,35 +804,6 @@ static int lpm_suspend_prepare(void)
 
 	suspend_in_progress = true;
 	msm_mpm_suspend_prepare();
-	regulator_showall_enabled();
-
-/* Temporary fix for RUBEN LTE for configuring GPIO 33 to NC configuration
-before entering sleep as some other process is changing it*/
-#if defined (CONFIG_MACH_RUBENSLTE_OPEN)
-	if (gpio_is_valid(33)) {
-		gpio_tlmm_config(GPIO_CFG(33, 0,
-			GPIO_CFG_INPUT,GPIO_CFG_PULL_DOWN,GPIO_CFG_2MA),
-			GPIO_CFG_ENABLE);
-	}
-#endif
-#ifdef CONFIG_SEC_GPIO_DVS
-	/************************ Caution !!! ****************************
-	 * This functiongit a must be located in appropriate SLEEP position
-	 * in accordance with the specification of each BB vendor.
-	 ************************ Caution !!! ****************************/
-	gpio_dvs_check_sleepgpio();
-#endif
-
-#ifdef CONFIG_SEC_PM_DEBUG
-	if (msm_pm_sleep_sec_debug) {
-		msm_gpio_print_enabled();
-		qpnp_debug_suspend_show();
-#ifdef CONFIG_GPIO_PCAL6416A
-		expander_print_all();
-#endif
-	}
-#endif
-
 	return 0;
 }
 

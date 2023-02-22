@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2015, 2017 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2013,2015 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -56,6 +56,8 @@
 #define WCNSS_ENABLE_PC_LATENCY	PM_QOS_DEFAULT_VALUE
 #define WCNSS_PM_QOS_TIMEOUT	15000
 #define WAIT_FOR_CBC_IND     2
+#define IS_CAL_DATA_PRESENT     0
+
 /* module params */
 #define WCNSS_CONFIG_UNSPECIFIED (-1)
 #define UINT32_MAX (0xFFFFFFFFU)
@@ -158,7 +160,7 @@ static DEFINE_SPINLOCK(reg_spinlock);
 #define PRONTO_PLL_STATUS_OFFSET		0x1c
 
 #define MSM_PRONTO_MCU_BASE			0xfb080c00
-#define MCU_APB2PHY_STATUS_OFFSET               0xec
+#define MCU_APB2PHY_STATUS_OFFSET		0xec
 #define MCU_CBR_CCAHB_ERR_OFFSET		0x380
 #define MCU_CBR_CAHB_ERR_OFFSET			0x384
 #define MCU_CBR_CCAHB_TIMEOUT_OFFSET		0x388
@@ -417,7 +419,7 @@ static struct {
 	int	user_cal_read;
 	int	user_cal_available;
 	u32	user_cal_rcvd;
-	u32	user_cal_exp_size;
+	int	user_cal_exp_size;
 	int	iris_xo_mode_set;
 	int	fw_vbatt_state;
 	int	ctrl_device_opened;
@@ -811,7 +813,7 @@ void wcnss_pronto_log_debug_regs(void)
 	reg_addr = penv->pronto_mcu_base + MCU_APB2PHY_STATUS_OFFSET;
 	reg = readl_relaxed(reg_addr);
 	pr_err("MCU_APB2PHY_STATUS %08x\n", reg);
-	
+
 	reg_addr = penv->pronto_mcu_base + MCU_CBR_CCAHB_ERR_OFFSET;
 	reg = readl_relaxed(reg_addr);
 	pr_err("MCU_CBR_CCAHB_ERR %08x\n", reg);
@@ -1955,12 +1957,7 @@ static void wcnssctrl_rx_handler(struct work_struct *worker)
 		penv->is_cbc_done = 1;
 		pr_debug("wcnss: received WCNSS_CBC_COMPLETE_IND from FW\n");
 		break;
-		
-	case WCNSS_CBC_COMPLETE_IND:
-		penv->is_cbc_done = 1;
-		pr_debug("wcnss: received WCNSS_CBC_COMPLETE_IND from FW\n");
-		break;
-		
+
 	case WCNSS_CALDATA_UPLD_REQ:
 		extract_cal_data(len);
 		break;
@@ -2257,7 +2254,7 @@ static void wcnss_nvbin_dnld_main(struct work_struct *worker)
 	if (!FW_CALDATA_CAPABLE())
 		goto nv_download;
 
-	if (!penv->fw_cal_available && WCNSS_CONFIG_UNSPECIFIED
+	if (!penv->fw_cal_available && IS_CAL_DATA_PRESENT
 		!= has_calibrated_data && !penv->user_cal_available) {
 		while (!penv->user_cal_available && retry++ < 5)
 			msleep(500);
@@ -2610,7 +2607,7 @@ wcnss_trigger_config(struct platform_device *pdev)
 		}
 	} while (pil_retry++ < WCNSS_MAX_PIL_RETRY && IS_ERR(penv->pil));
 
-	if (IS_ERR(penv->pil)) {
+	if (pil_retry >= WCNSS_MAX_PIL_RETRY) {
 		wcnss_reset_intr();
 		if (penv->wcnss_notif_hdle)
 			subsys_notif_unregister_notifier(penv->wcnss_notif_hdle,
@@ -2798,8 +2795,8 @@ static ssize_t wcnss_wlan_write(struct file *fp, const char __user
 
 	mutex_lock(&penv->dev_lock);
 	if ((UINT32_MAX - count < penv->user_cal_rcvd) ||
-	     (penv->user_cal_exp_size < count + penv->user_cal_rcvd)) {
-		pr_err(DEVICE " invalid size to write %zu\n", count +
+		(penv->user_cal_exp_size < count + penv->user_cal_rcvd)) {
+		pr_err(DEVICE " invalid size to write %d\n", count +
 				penv->user_cal_rcvd);
 		mutex_unlock(&penv->dev_lock);
 		return -ENOMEM;

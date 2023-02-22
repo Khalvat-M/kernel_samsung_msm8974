@@ -118,6 +118,8 @@ source "drivers/block/paride/Kconfig"
 
 source "drivers/block/mtip32xx/Kconfig"
 
+source "drivers/block/zram/Kconfig"
+
 config BLK_CPQ_DA
 	tristate "Compaq SMART2 support"
 	depends on PCI && VIRT_TO_BUS
@@ -554,7 +556,5 @@ config BLK_DEV_RBD
 	  More information at http://ceph.newdream.net/.
 
 	  If unsure, say N.
-
-source "drivers/block/zram/Kconfig"
 
 endif # BLK_DEV

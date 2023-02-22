@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2013, 2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -48,7 +48,6 @@ static struct snd_msm_volume multi_ch_pcm_audio = {NULL, 0x2000};
 
 #define PLAYBACK_NUM_PERIODS	8
 #define PLAYBACK_PERIOD_SIZE	4032
-#define PLAYBACK_PERIOD_SIZE_MAX 16384
 #define CAPTURE_NUM_PERIODS	16
 #define CAPTURE_PERIOD_SIZE	320
 
@@ -80,14 +79,14 @@ static struct snd_pcm_hardware msm_pcm_hardware_playback = {
 				SNDRV_PCM_INFO_PAUSE | SNDRV_PCM_INFO_RESUME),
 	.formats =              (SNDRV_PCM_FMTBIT_S16_LE |
 				SNDRV_PCM_FMTBIT_S24_LE),
-	.rates =                SNDRV_PCM_RATE_8000_192000,
+	.rates =                SNDRV_PCM_RATE_8000_96000,
 	.rate_min =             8000,
-	.rate_max =             192000,
+	.rate_max =             96000,
 	.channels_min =         1,
 	.channels_max =         6,
-	.buffer_bytes_max =     PLAYBACK_NUM_PERIODS * PLAYBACK_PERIOD_SIZE_MAX,
+	.buffer_bytes_max =     PLAYBACK_NUM_PERIODS * PLAYBACK_PERIOD_SIZE,
 	.period_bytes_min =	PLAYBACK_PERIOD_SIZE,
-	.period_bytes_max =     PLAYBACK_PERIOD_SIZE_MAX,
+	.period_bytes_max =     PLAYBACK_PERIOD_SIZE,
 	.periods_min =          PLAYBACK_NUM_PERIODS,
 	.periods_max =          PLAYBACK_NUM_PERIODS,
 	.fifo_size =            0,
@@ -96,7 +95,7 @@ static struct snd_pcm_hardware msm_pcm_hardware_playback = {
 /* Conventional and unconventional sample rate supported */
 static unsigned int supported_sample_rates[] = {
 	8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000,
-	96000, 192000
+	96000
 };
 
 static uint32_t in_frame_info[CAPTURE_NUM_PERIODS][2];
@@ -545,6 +544,8 @@ static int msm_pcm_playback_close(struct snd_pcm_substream *substream)
 	multi_ch_pcm_audio.prtd = NULL;
 	q6asm_audio_client_free(prtd->audio_client);
 	kfree(prtd);
+	runtime->private_data = NULL;
+
 	return 0;
 }
 
@@ -647,6 +648,7 @@ static int msm_pcm_capture_close(struct snd_pcm_substream *substream)
 	SNDRV_PCM_STREAM_CAPTURE);
 	q6asm_audio_client_free(prtd->audio_client);
 	kfree(prtd);
+	runtime->private_data = NULL;
 
 	return 0;
 }

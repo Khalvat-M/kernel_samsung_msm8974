@@ -144,7 +144,7 @@ extern void sdcardfs_destroy_dentry_cache(void);
 extern int new_dentry_private_data(struct dentry *dentry);
 extern void free_dentry_private_data(struct dentry *dentry);
 extern struct dentry *sdcardfs_lookup(struct inode *dir, struct dentry *dentry,
-				    struct nameidata *nd);
+				    unsigned int flags);
 extern struct inode *sdcardfs_iget(struct super_block *sb,
 				 struct inode *lower_inode, userid_t id);
 extern int sdcardfs_interpose(struct dentry *dentry, struct super_block *sb,
@@ -649,7 +649,6 @@ static inline bool qstr_case_eq(const struct qstr *q1, const struct qstr *q2)
 	return q1->len == q2->len && str_n_case_eq(q1->name, q2->name, q2->len);
 }
 
-#define QSTR_INIT(n, l)      { .name = n, .len = l }
 #define QSTR_LITERAL(string) QSTR_INIT(string, sizeof(string)-1)
 
 #endif	/* not _SDCARDFS_H_ */

@@ -266,7 +266,6 @@ static struct platform_driver apr_modem_driver = {
 static int __init apr_tal_init(void)
 {
 	int i, j, k;
-	int ret;
 
 	for (i = 0; i < APR_DL_MAX; i++)
 		for (j = 0; j < APR_DEST_MAX; j++)
@@ -277,19 +276,8 @@ static int __init apr_tal_init(void)
 				spin_lock_init(&apr_svc_ch[i][j][k].w_lock);
 				mutex_init(&apr_svc_ch[i][j][k].m_lock);
 			}
-	ret  = platform_driver_register(&apr_q6_driver);
-	if (ret)
-		goto err;
-		ret  = platform_driver_register(&apr_modem_driver);
-	if (ret)
-		goto err_register;
-
+	platform_driver_register(&apr_q6_driver);
+	platform_driver_register(&apr_modem_driver);
 	return 0;
-
-err_register:
-	platform_driver_unregister(&apr_q6_driver);
-err:
-	return ret;
-
 }
 device_initcall(apr_tal_init);

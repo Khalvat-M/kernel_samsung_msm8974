@@ -266,12 +266,6 @@ config HID_KENSINGTON
 	---help---
 	Support for Kensington Slimblade Trackball.
 
-config HID_KK_UPGRADE
-	bool "KK Upgrade"
-	depends on USB_HID
-	---help---
-	Feature for KK Upgrade models.
-
 config HID_LCPOWER
 	tristate "LC-Power"
 	depends on USB_HID
@@ -288,7 +282,7 @@ config HID_LOGITECH
 config HID_LOGITECH_DJ
 	tristate "Logitech Unifying receivers full support"
 	depends on HID_LOGITECH
-	default y
+	default m
 	---help---
 	Say Y if you want support for Logitech Unifying receivers and devices.
 	Unifying receivers are capable of pairing up to 6 Logitech compliant
@@ -533,7 +527,7 @@ config HID_SAITEK
 
 config HID_SAMSUNG
 	tristate "Samsung InfraRed remote control or keyboards"
-	depends on (USB_HID || BT_HIDP)
+	depends on USB_HID
 	---help---
 	Support for Samsung InfraRed remote control or keyboards.
 
@@ -595,13 +589,6 @@ config SMARTJOYPLUS_FF
 	Say Y here if you have a SmartJoy PLUS PS2/USB adapter and want to
 	enable force feedback support for it.
 
-config HID_SYNAPTICS_BT
-	tristate "HID Synaptics"
-	depends on HID
-	default n
-	---help---
-	For a Bluetooth HID touchpad
-
 config HID_TIVO
 	tristate "TiVo Slide Bluetooth remote control support"
 	depends on (USB_HID || BT_HIDP)
@@ -646,28 +633,28 @@ config HID_WACOM_POWER_SUPPLY
 	  Wacom Bluetooth devices.
 
 config HID_WIIMOTE
-	tristate "Nintendo Wii Remote support"
-	depends on BT_HIDP
+	tristate "Nintendo Wii / Wii U peripherals"
 	depends on LEDS_CLASS
 	select POWER_SUPPLY
 	select INPUT_FF_MEMLESS
 	---help---
-	Support for the Nintendo Wii Remote bluetooth device.
+	Support for Nintendo Wii and Wii U Bluetooth peripherals. Supported
+	devices are the Wii Remote and its extension devices, but also devices
+	based on the Wii Remote like the Wii U Pro Controller or the
+	Wii Balance Board.
 
-config HID_WIIMOTE_EXT
-	bool "Nintendo Wii Remote Extension support"
-	depends on HID_WIIMOTE
-	default HID_WIIMOTE
-	---help---
-	Support for extension controllers of the Nintendo Wii Remote. Say yes
-	here if you want to use the Nintendo Motion+, Nunchuck or Classic
-	extension controllers with your Wii Remote.
+	Support for all official Nintendo extensions is available, however, 3rd
+	party extensions might not be supported. Please report these devices to:
+	  http://github.com/dvdhrm/xwiimote/issues
 
-config HID_ZAGG
-	tristate "ZAGG InfraRed remote control or keyboards"
-	depends on (USB_HID || BT_HIDP)
-	---help---
-	Support for ZAGG InfraRed remote control or keyboards.
+	Other Nintendo Wii U peripherals that are IEEE 802.11 based (including
+	the Wii U Gamepad) might be supported in the future. But currently
+	support is limited to Bluetooth based devices.
+
+	If unsure, say N.
+
+	To compile this driver as a module, choose M here: the
+	module will be called hid-wiimote.
 
 config HID_ZEROPLUS
 	tristate "Zeroplus based game controller support"
@@ -688,13 +675,6 @@ config HID_ZYDACRON
 	depends on USB_HID
 	---help---
 	Support for Zydacron remote control.
-
-config HID_OVR
-	tristate "OVR device support"
-	depends on USB_HID
-	---help---
-	Support for OVR devices.
-	Say Y here if you have a OVR device.
 
 endmenu
 

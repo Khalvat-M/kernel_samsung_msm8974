@@ -34,7 +34,7 @@
 #include <linux/fb.h>
 
 #include <asm/fb.h>
-#include "dlog.h"
+
 
     /*
      *  Frame buffer device initialization and setup routines
@@ -1077,7 +1077,7 @@ static long do_fb_ioctl(struct fb_info *info, unsigned int cmd,
 	struct fb_event event;
 	void __user *argp = (void __user *)arg;
 	long ret = 0;
-	__DLOG__("Node: %x CMD: %x\n",info->node,cmd);
+
 	switch (cmd) {
 	case FBIOGET_VSCREENINFO:
 		if (!lock_fb_info(info))
@@ -1195,7 +1195,6 @@ static long do_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		else
 			ret = -ENOTTY;
 	}
-	__DLOG__("Node: %x CMD: %x END: %x\n",info->node,cmd,FUNC_END);
 	return ret;
 }
 
@@ -1396,6 +1395,7 @@ fb_mmap(struct file *file, struct vm_area_struct * vma)
 		len = info->fix.mmio_len;
 	}
 	mutex_unlock(&info->mm_lock);
+
 	vma->vm_page_prot = vm_get_page_prot(vma->vm_flags);
 	fb_pgprotect(file, vma, start);
 
@@ -1588,7 +1588,7 @@ static int do_register_framebuffer(struct fb_info *fb_info)
 		return -ENXIO;
 
 	num_registered_fb++;
-	for (i = 0 ; i < FB_MAX-1; i++)
+	for (i = 0 ; i < FB_MAX; i++)
 		if (!registered_fb[i])
 			break;
 	fb_info->node = i;

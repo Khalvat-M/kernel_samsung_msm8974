@@ -782,7 +782,8 @@ int do_remount_sb(struct super_block *sb, int flags, void *data, int force)
 	return do_remount_sb2(NULL, sb, flags, data, force);
 }
 
-void do_emergency_remount(struct work_struct *work)
+extern int get_partition_num_by_name(char *name);
+static void do_emergency_remount(struct work_struct *work)
 {
 	struct super_block *sb, *p = NULL;
 

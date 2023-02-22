@@ -55,10 +55,10 @@ struct suspend_stats suspend_stats;
 static DEFINE_MUTEX(dpm_list_mtx);
 static pm_message_t pm_transition;
 
-struct dpm_watchdog {
-	struct device		*dev;
-	struct task_struct	*tsk;
-	struct timer_list	timer;
+static void dpm_drv_timeout(unsigned long data);
+struct dpm_drv_wd_data {
+	struct device *dev;
+	struct task_struct *tsk;
 };
 
 static int async_error;
@@ -396,56 +396,6 @@ static int dpm_run_callback(pm_callback_t cb, struct device *dev,
 	return error;
 }
 
-/**
- * dpm_wd_handler - Driver suspend / resume watchdog handler.
- *
- * Called when a driver has timed out suspending or resuming.
- * There's not much we can do here to recover so BUG() out for
- * a crash-dump
- */
-static void dpm_wd_handler(unsigned long data)
-{
-	struct dpm_watchdog *wd = (void *)data;
-	struct device *dev      = wd->dev;
-	struct task_struct *tsk = wd->tsk;
-
-	dev_emerg(dev, "**** DPM device timeout ****\n");
-	show_stack(tsk, NULL);
-
-	BUG();
-}
-
-/**
- * dpm_wd_set - Enable pm watchdog for given device.
- * @wd: Watchdog. Must be allocated on the stack.
- * @dev: Device to handle.
- */
-static void dpm_wd_set(struct dpm_watchdog *wd, struct device *dev)
-{
-	struct timer_list *timer = &wd->timer;
-
-	wd->dev = dev;
-	wd->tsk = get_current();
-
-	init_timer_on_stack(timer);
-	timer->expires = jiffies + HZ * 12;
-	timer->function = dpm_wd_handler;
-	timer->data = (unsigned long)wd;
-	add_timer(timer);
-}
-
-/**
- * dpm_wd_clear - Disable pm watchdog.
- * @wd: Watchdog to disable.
- */
-static void dpm_wd_clear(struct dpm_watchdog *wd)
-{
-	struct timer_list *timer = &wd->timer;
-
-	del_timer_sync(timer);
-	destroy_timer_on_stack(timer);
-}
-
 /*------------------------- Resume routines -------------------------*/
 
 /**
@@ -621,7 +571,6 @@ static int device_resume(struct device *dev, pm_message_t state, bool async)
 	pm_callback_t callback = NULL;
 	char *info = NULL;
 	int error = 0;
-	struct dpm_watchdog wd;
 
 	TRACE_DEVICE(dev);
 	TRACE_RESUME(0);
@@ -634,7 +583,6 @@ static int device_resume(struct device *dev, pm_message_t state, bool async)
 	 * a resumed device, even if the device hasn't been completed yet.
 	 */
 	dev->power.is_prepared = false;
-	dpm_wd_set(&wd, dev);
 
 	if (!dev->power.is_suspended)
 		goto Unlock;
@@ -688,7 +636,6 @@ static int device_resume(struct device *dev, pm_message_t state, bool async)
 
  Unlock:
 	device_unlock(dev);
-	dpm_wd_clear(&wd);
 	complete_all(&dev->power.completion);
 
 	TRACE_RESUME(error);
@@ -711,6 +658,30 @@ static bool is_async(struct device *dev)
 {
 	return dev->power.async_suspend && pm_async_enabled
 		&& !pm_trace_is_enabled();
+}
+
+/**
+ *	dpm_drv_timeout - Driver suspend / resume watchdog handler
+ *	@data: struct device which timed out
+ *
+ * 	Called when a driver has timed out suspending or resuming.
+ * 	There's not much we can do here to recover so
+ * 	BUG() out for a crash-dump
+ *
+ */
+static void dpm_drv_timeout(unsigned long data)
+{
+	struct dpm_drv_wd_data *wd_data = (void *)data;
+	struct device *dev = wd_data->dev;
+	struct task_struct *tsk = wd_data->tsk;
+
+	printk(KERN_EMERG "**** DPM device timeout: %s (%s)\n", dev_name(dev),
+	       (dev->driver ? dev->driver->name : "no driver"));
+
+	printk(KERN_EMERG "dpm suspend stack:\n");
+	show_stack(tsk, NULL);
+
+	BUG();
 }
 
 /**
@@ -1092,7 +1063,8 @@ static int __device_suspend(struct device *dev, pm_message_t state, bool async)
 	pm_callback_t callback = NULL;
 	char *info = NULL;
 	int error = 0;
-	struct dpm_watchdog wd;
+	struct timer_list timer;
+	struct dpm_drv_wd_data data;
 
 	dpm_wait_for_children(dev, async);
 
@@ -1113,7 +1085,13 @@ static int __device_suspend(struct device *dev, pm_message_t state, bool async)
 		goto Complete;
 	}
 
-	dpm_wd_set(&wd, dev);
+	data.dev = dev;
+	data.tsk = get_current();
+	init_timer_on_stack(&timer);
+	timer.expires = jiffies + HZ * 12;
+	timer.function = dpm_drv_timeout;
+	timer.data = (unsigned long)&data;
+	add_timer(&timer);
 
 	device_lock(dev);
 
@@ -1170,7 +1148,8 @@ static int __device_suspend(struct device *dev, pm_message_t state, bool async)
 
 	device_unlock(dev);
 
-	dpm_wd_clear(&wd);
+	del_timer_sync(&timer);
+	destroy_timer_on_stack(&timer);
 
  Complete:
 	complete_all(&dev->power.completion);

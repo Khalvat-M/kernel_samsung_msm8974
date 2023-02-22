@@ -27,10 +27,6 @@ enum iio_chan_type {
 	IIO_ANGL,
 	IIO_TIMESTAMP,
 	IIO_CAPACITANCE,
-	IIO_GRIP,
-#if defined(CONFIG_SEC_LOCALE_KOR_FRESCO)
-	IIO_QUATERNION,
-#endif
 };
 
 enum iio_modifier {
@@ -48,7 +44,6 @@ enum iio_modifier {
 	IIO_MOD_X_OR_Y_OR_Z,
 	IIO_MOD_LIGHT_BOTH,
 	IIO_MOD_LIGHT_IR,
-	IIO_MOD_R,
 };
 
 #define IIO_VAL_INT 1

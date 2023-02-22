@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -89,7 +89,7 @@ static int ipa_generate_flt_hw_rule(enum ipa_ip_type ip,
  * @ip: the ip address family type
  * @hdr_sz: header size
  *
- * Returns:	size on success, negative on failure
+ * Returns:	0 on success, negative on failure
  *
  * caller needs to hold any needed locks to ensure integrity
  *
@@ -179,16 +179,10 @@ int ipa_generate_flt_hw_tbl(enum ipa_ip_type ip, struct ipa_mem_buffer *mem)
 	u8 *hdr;
 	u8 *body;
 	u8 *base;
-	int res;
 	struct ipa_mem_buffer flt_tbl_mem;
 	u8 *ftbl_membody;
 
-	res = ipa_get_flt_hw_tbl_size(ip, &hdr_sz);
-	if (res < 0) {
-		IPAERR("ipa_get_flt_hw_tbl_size failed %d\n", res);
-		return res;
-	}
-	mem->size = res;
+	mem->size = ipa_get_flt_hw_tbl_size(ip, &hdr_sz);
 	mem->size = IPA_HW_TABLE_ALIGNMENT(mem->size);
 
 	if (mem->size == 0) {
@@ -246,12 +240,7 @@ int ipa_generate_flt_hw_tbl(enum ipa_ip_type ip, struct ipa_mem_buffer *mem)
 					((u32)body &
 					IPA_FLT_ENTRY_MEMORY_ALLIGNMENT));
 		} else {
-			if (tbl->sz == 0) {
-				IPAERR("tbl size is 0\n");
-				WARN_ON(1);
-				goto proc_err;
-			}
-
+			WARN_ON(tbl->sz == 0);
 			/* allocate memory for the flt tbl */
 			flt_tbl_mem.size = tbl->sz;
 			flt_tbl_mem.base =
@@ -328,12 +317,7 @@ int ipa_generate_flt_hw_tbl(enum ipa_ip_type ip, struct ipa_mem_buffer *mem)
 						((u32)body &
 					IPA_FLT_ENTRY_MEMORY_ALLIGNMENT));
 			} else {
-				if (tbl->sz == 0) {
-					IPAERR("tbl size is 0\n");
-					WARN_ON(1);
-					goto proc_err;
-				}
-
+				WARN_ON(tbl->sz == 0);
 				/* allocate memory for the flt tbl */
 				flt_tbl_mem.size = tbl->sz;
 				flt_tbl_mem.base =
@@ -539,7 +523,7 @@ static int __ipa_add_flt_rule(struct ipa_flt_tbl *tbl, enum ipa_ip_type ip,
 		}
 
 		if (((struct ipa_rt_tbl *)rule->rt_tbl_hdl)->cookie !=
-				IPA_RT_TBL_COOKIE) {
+				IPA_COOKIE) {
 			IPAERR("RT table cookie is invalid\n");
 			goto error;
 		}
@@ -554,11 +538,11 @@ static int __ipa_add_flt_rule(struct ipa_flt_tbl *tbl, enum ipa_ip_type ip,
 	entry = kmem_cache_zalloc(ipa_ctx->flt_rule_cache, GFP_KERNEL);
 	if (!entry) {
 		IPAERR("failed to alloc FLT rule object\n");
-		goto error;
+		goto mem_alloc_fail;
 	}
 	INIT_LIST_HEAD(&entry->link);
 	entry->rule = *rule;
-	entry->cookie = IPA_FLT_COOKIE;
+	entry->cookie = IPA_COOKIE;
 	entry->rt_tbl = (struct ipa_rt_tbl *)rule->rt_tbl_hdl;
 	entry->tbl = tbl;
 	if (add_rear)
@@ -575,16 +559,12 @@ static int __ipa_add_flt_rule(struct ipa_flt_tbl *tbl, enum ipa_ip_type ip,
 	if (ipa_insert(&ipa_ctx->flt_rule_hdl_tree, node)) {
 		IPAERR("failed to add to tree\n");
 		WARN_ON(1);
-		goto ipa_insert_failed;
 	}
 
 	return 0;
-ipa_insert_failed:
-	tbl->rule_cnt--;
-	if (entry->rt_tbl)
-		entry->rt_tbl->ref_cnt--;
-	list_del(&entry->link);
-	kmem_cache_free(ipa_ctx->flt_rule_cache, entry);
+
+mem_alloc_fail:
+	kmem_cache_free(ipa_ctx->tree_node_cache, node);
 error:
 
 	return -EPERM;
@@ -602,7 +582,7 @@ static int __ipa_del_flt_rule(u32 rule_hdl)
 		return -EINVAL;
 	}
 
-	if (entry == NULL || (entry->cookie != IPA_FLT_COOKIE)) {
+	if (entry == NULL || (entry->cookie != IPA_COOKIE)) {
 		IPAERR("bad params\n");
 
 		return -EINVAL;

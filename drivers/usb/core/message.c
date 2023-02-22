@@ -1771,7 +1771,8 @@ free_interfaces:
 		goto free_interfaces;
 	}
 
-	/* Initialize the new interface structures and the
+	/*
+	 * Initialize the new interface structures and the
 	 * hc/hcd/usbcore interface/endpoint state.
 	 */
 	for (i = 0; i < nintf; ++i) {

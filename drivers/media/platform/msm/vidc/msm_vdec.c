@@ -960,7 +960,7 @@ int msm_vdec_s_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 
 	if (!inst || !f) {
 		dprintk(VIDC_ERR,
-			"Invalid input, inst = %pK, format = %pK\n", inst, f);
+			"Invalid input, inst = %p, format = %p\n", inst, f);
 		return -EINVAL;
 	}
 	if (f->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
@@ -1210,7 +1210,6 @@ static int msm_vdec_queue_setup(struct vb2_queue *q,
 				"Failed to get buffer requirements: %d\n", rc);
 			break;
 		}
-		mutex_lock(&inst->lock);
 		bufreq = get_buff_req_buffer(inst,
 			msm_comm_get_hal_output_buffer(inst));
 		if (!bufreq) {
@@ -1218,7 +1217,6 @@ static int msm_vdec_queue_setup(struct vb2_queue *q,
 				"No buffer requirement for buffer type %x\n",
 				HAL_BUFFER_OUTPUT);
 			rc = -EINVAL;
-			mutex_unlock(&inst->lock);
 			break;
 		}
 		*num_buffers = max(*num_buffers, bufreq->buffer_count_min);
@@ -1230,7 +1228,6 @@ static int msm_vdec_queue_setup(struct vb2_queue *q,
 			rc = call_hfi_op(hdev, session_set_property,
 				inst->session, property_id, &new_buf_count);
 		}
-		mutex_unlock(&inst->lock);
 		dprintk(VIDC_DBG, "count =  %d, size = %d, alignment = %d\n",
 				inst->buff_req.buffer[1].buffer_count_actual,
 				inst->buff_req.buffer[1].buffer_size,
@@ -1862,11 +1859,7 @@ static struct v4l2_ctrl **get_super_cluster(struct msm_vidc_inst *inst,
 			NUM_CTRLS, GFP_KERNEL);
 
 	if (!size || !cluster || !inst)
-	{
-		if(cluster) 
-			kfree(cluster); // PREVENT Resouce leak fix
 		return NULL;
-	}
 
 	for (c = 0; c < NUM_CTRLS; c++)
 		cluster[sz++] = inst->ctrls[c];

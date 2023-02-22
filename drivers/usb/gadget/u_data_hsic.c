@@ -725,7 +725,7 @@ static int ghsic_data_port_alloc(unsigned port_num, enum gadget_type gtype)
 
 	platform_driver_register(pdrv);
 
-	pr_debug("%s: portno:%d\n", __func__, port_num);
+	pr_debug("%s: port:%pK portno:%d\n", __func__, port, port_num);
 
 	return 0;
 }

@@ -23,23 +23,12 @@ comment "Crypto core or helper"
 
 config CRYPTO_FIPS
 	bool "FIPS 200 compliance"
-	depends on (CRYPTO_ANSI_CPRNG || CRYPTO_DRBG) && !CRYPTO_MANAGER_DISABLE_TESTS
+	depends on CRYPTO_ANSI_CPRNG && !CRYPTO_MANAGER_DISABLE_TESTS
 	help
 	  This options enables the fips boot option which is
 	  required if you want to system to operate in a FIPS 200
 	  certification.  You should say no unless you know what
 	  this is.
-
-config CRYPTO_FIPS_INTEG_COPY_ADDRESS
-	hex "FIPS integrity check zImage offset"
-		default 0x8A008000
-        help
-          This options sets the offset from stext address where
-          zImage will be copied for integrity check if you want
-          to system to operate in FIPS mode, which enables
-	  kernel crypto module.
-	  If you need to change this value, change in device
-	  specific configuration file instead of here.
 
 config CRYPTO_ALGAPI
 	tristate
@@ -184,7 +173,7 @@ config CRYPTO_AUTHENC
 
 config CRYPTO_TEST
 	tristate "Testing module"
-	default n
+	depends on m
 	select CRYPTO_MANAGER
 	help
 	  Quick & dirty crypto test module.
@@ -443,7 +432,6 @@ config CRYPTO_SHA1_ARM
 	depends on ARM
 	select CRYPTO_SHA1
 	select CRYPTO_HASH
-	default y
 	help
 	  SHA-1 secure hash standard (FIPS 180-1/DFIPS 180-2) implemented
 	  using optimized ARM assembler.
@@ -633,7 +621,6 @@ config CRYPTO_AES_ARM
 	depends on ARM
 	select CRYPTO_ALGAPI
 	select CRYPTO_AES
-	default y
 	help
 	  Use optimized AES assembler routines for ARM platforms.
 
@@ -1063,40 +1050,6 @@ config CRYPTO_ANSI_CPRNG
 	  for cryptographic modules.  Uses the Algorithm specified in
 	  ANSI X9.31 A.2.4. Note that this option must be enabled if
 	  CRYPTO_FIPS is selected
-
-menuconfig CRYPTO_DRBG_MENU
-	tristate "NIST SP800-90A DRBG"
-	help
-	  NIST SP800-90A compliant DRBG. In the following submenu, one or
-	  more of the DRBG types must be selected.
-
-if CRYPTO_DRBG_MENU
-
-config CRYPTO_DRBG_HMAC
-	bool "Enable HMAC DRBG"
-	default y
-	select CRYPTO_HMAC
-	help
-	  Enable the HMAC DRBG variant as defined in NIST SP800-90A.
-
-config CRYPTO_DRBG_HASH
-	bool "Enable Hash DRBG"
-	select CRYPTO_HASH
-	help
-	  Enable the Hash DRBG variant as defined in NIST SP800-90A.
-
-config CRYPTO_DRBG_CTR
-	bool "Enable CTR DRBG"
-	select CRYPTO_AES
-	help
-	  Enable the CTR DRBG variant as defined in NIST SP800-90A.
-
-config CRYPTO_DRBG
-	tristate
-	default CRYPTO_DRBG_MENU if (CRYPTO_DRBG_HMAC || CRYPTO_DRBG_HASH || CRYPTO_DRBG_CTR)
-	select CRYPTO_RNG
-
-endif	# if CRYPTO_DRBG_MENU
 
 config CRYPTO_USER_API
 	tristate

@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -210,14 +210,6 @@ int ipa_query_intf_tx_props(struct ipa_ioc_query_intf_tx_props *tx)
 	mutex_lock(&ipa_ctx->lock);
 	list_for_each_entry(entry, &ipa_ctx->intf_list, link) {
 		if (!strncmp(entry->name, tx->name, IPA_RESOURCE_NAME_MAX)) {
-			/* add the entry check */
-			if (entry->num_tx_props != tx->num_tx_props) {
-				IPAERR("invalid entry number(%u %u)\n",
-					entry->num_tx_props,
-						tx->num_tx_props);
-				mutex_unlock(&ipa_ctx->lock);
-				return result;
-			}
 			memcpy(tx->tx, entry->tx, entry->num_tx_props *
 			       sizeof(struct ipa_ioc_tx_intf_prop));
 			result = 0;
@@ -251,14 +243,6 @@ int ipa_query_intf_rx_props(struct ipa_ioc_query_intf_rx_props *rx)
 	mutex_lock(&ipa_ctx->lock);
 	list_for_each_entry(entry, &ipa_ctx->intf_list, link) {
 		if (!strncmp(entry->name, rx->name, IPA_RESOURCE_NAME_MAX)) {
-			/* add the entry check */
-			if (entry->num_rx_props != rx->num_rx_props) {
-				IPAERR("invalid entry number(%u %u)\n",
-					entry->num_rx_props,
-						rx->num_rx_props);
-				mutex_unlock(&ipa_ctx->lock);
-				return result;
-			}
 			memcpy(rx->rx, entry->rx, entry->num_rx_props *
 					sizeof(struct ipa_ioc_rx_intf_prop));
 			result = 0;
@@ -440,33 +424,16 @@ ssize_t ipa_read(struct file *filp, char __user *buf, size_t count,
 		if (msg) {
 			locked = 0;
 			mutex_unlock(&ipa_ctx->msg_lock);
-			if (count < sizeof(struct ipa_msg_meta)) {
-				kfree(msg);
-				msg = NULL;
-				ret = -EFAULT;
-				break;
-			}
 			if (copy_to_user(buf, &msg->meta,
-					sizeof(struct ipa_msg_meta))) {
-				kfree(msg);
-				msg = NULL;
+					  sizeof(struct ipa_msg_meta))) {
 				ret = -EFAULT;
 				break;
 			}
 			buf += sizeof(struct ipa_msg_meta);
 			count -= sizeof(struct ipa_msg_meta);
 			if (msg->buff) {
-				if (count >= msg->meta.msg_len) {
-					if (copy_to_user(buf, msg->buff,
-							msg->meta.msg_len)) {
-						kfree(msg);
-						msg = NULL;
-						ret = -EFAULT;
-						break;
-					}
-				} else {
-					kfree(msg);
-					msg = NULL;
+				if (copy_to_user(buf, msg->buff,
+						  msg->meta.msg_len)) {
 					ret = -EFAULT;
 					break;
 				}

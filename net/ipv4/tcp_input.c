@@ -743,12 +743,12 @@ void tcp_update_metrics(struct sock *sk)
 	if (sysctl_tcp_nometrics_save)
 		return;
 
-	dst_confirm(dst);
-
 	if (dst && (dst->flags & DST_HOST)) {
 		const struct inet_connection_sock *icsk = inet_csk(sk);
 		int m;
 		unsigned long rtt;
+
+		dst_confirm(dst);
 
 		if (icsk->icsk_backoff || !tp->srtt) {
 			/* This session failed to estimate rtt. Why?
@@ -1430,7 +1430,7 @@ static int tcp_shifted_skb(struct sock *sk, struct sk_buff *skb,
 	TCP_SKB_CB(skb)->seq += shifted;
 
 	skb_shinfo(prev)->gso_segs += pcount;
-	WARN_ON_ONCE(tcp_skb_pcount(skb) < pcount);
+	BUG_ON(skb_shinfo(skb)->gso_segs < pcount);
 	skb_shinfo(skb)->gso_segs -= pcount;
 
 	/* When we're adding to gso_segs == 1, gso_size will be zero,
@@ -1498,21 +1498,6 @@ static int skb_can_shift(const struct sk_buff *skb)
 	return !skb_headlen(skb) && skb_is_nonlinear(skb);
 }
 
-int tcp_skb_shift(struct sk_buff *to, struct sk_buff *from,
-		  int pcount, int shiftlen)
-{
-	/* TCP min gso_size is 8 bytes (TCP_MIN_GSO_SIZE)
-	 * Since TCP_SKB_CB(skb)->tcp_gso_segs is 16 bits, we need
-	 * to make sure not storing more than 65535 * 8 bytes per skb,
-	 * even if current MSS is bigger.
-	 */
-	if (unlikely(to->len + shiftlen >= 65535 * TCP_MIN_GSO_SIZE))
-		return 0;
-	if (unlikely(tcp_skb_pcount(to) + pcount > 65535))
-		return 0;
-	return skb_shift(to, from, shiftlen);
-}
-
 /* Try collapsing SACK blocks spanning across multiple skbs to a single
  * skb.
  */
@@ -1524,7 +1509,6 @@ static struct sk_buff *tcp_shift_skb_data(struct sock *sk, struct sk_buff *skb,
 	struct tcp_sock *tp = tcp_sk(sk);
 	struct sk_buff *prev;
 	int mss;
-	int next_pcount;
 	int pcount = 0;
 	int len;
 	int in_sack;
@@ -1619,7 +1603,7 @@ static struct sk_buff *tcp_shift_skb_data(struct sock *sk, struct sk_buff *skb,
 	if (!after(TCP_SKB_CB(skb)->seq + len, tp->snd_una))
 		goto fallback;
 
-	if (!tcp_skb_shift(prev, skb, pcount, len))
+	if (!skb_shift(prev, skb, len))
 		goto fallback;
 	if (!tcp_shifted_skb(sk, skb, state, pcount, len, mss, dup_sack))
 		goto out;
@@ -1638,10 +1622,9 @@ static struct sk_buff *tcp_shift_skb_data(struct sock *sk, struct sk_buff *skb,
 		goto out;
 
 	len = skb->len;
-	next_pcount = tcp_skb_pcount(skb);
-	if (tcp_skb_shift(prev, skb, next_pcount, len)) {
-		pcount += next_pcount;
-		tcp_shifted_skb(sk, skb, state, next_pcount, len, mss, 0);
+	if (skb_shift(prev, skb, len)) {
+		pcount += tcp_skb_pcount(skb);
+		tcp_shifted_skb(sk, skb, state, tcp_skb_pcount(skb), len, mss, 0);
 	}
 
 out:
@@ -3876,9 +3859,11 @@ static int tcp_ack(struct sock *sk, const struct sk_buff *skb, int flag)
 			tcp_cong_avoid(sk, ack, prior_in_flight);
 	}
 
-	if ((flag & FLAG_FORWARD_PROGRESS) || !(flag & FLAG_NOT_DUP))
-		dst_confirm(__sk_dst_get(sk));
-
+	if ((flag & FLAG_FORWARD_PROGRESS) || !(flag & FLAG_NOT_DUP)) {
+		struct dst_entry *dst = __sk_dst_get(sk);
+		if (dst)
+			dst_confirm(dst);
+	}
 	return 1;
 
 no_queue:
@@ -5250,7 +5235,7 @@ static int tcp_copy_to_iovec(struct sock *sk, struct sk_buff *skb, int hlen)
 		err = skb_copy_datagram_iovec(skb, hlen, tp->ucopy.iov, chunk);
 	else
 		err = skb_copy_and_csum_datagram_iovec(skb, hlen,
-						       tp->ucopy.iov, chunk);
+						       tp->ucopy.iov);
 
 	if (!err) {
 		tp->ucopy.len -= chunk;
@@ -6034,9 +6019,14 @@ int tcp_rcv_state_process(struct sock *sk, struct sk_buff *skb,
 
 		case TCP_FIN_WAIT1:
 			if (tp->snd_una == tp->write_seq) {
+				struct dst_entry *dst;
+
 				tcp_set_state(sk, TCP_FIN_WAIT2);
 				sk->sk_shutdown |= SEND_SHUTDOWN;
-				dst_confirm(__sk_dst_get(sk));
+
+				dst = __sk_dst_get(sk);
+				if (dst)
+					dst_confirm(dst);
 
 				if (!sock_flag(sk, SOCK_DEAD))
 					/* Wake up lingering close() */

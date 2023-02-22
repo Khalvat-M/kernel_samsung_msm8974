@@ -238,7 +238,7 @@ int dwc3_gadget_ep0_queue(struct usb_ep *ep, struct usb_request *request,
 
 	spin_lock_irqsave(&dwc->lock, flags);
 	if (!dep->endpoint.desc) {
-		dev_dbg(dwc->dev, "trying to queue request %pK to disabled %s\n",
+		dev_dbg(dwc->dev, "trying to queue request %p to disabled %s\n",
 				request, dep->name);
 		ret = -ESHUTDOWN;
 		goto out;
@@ -250,7 +250,7 @@ int dwc3_gadget_ep0_queue(struct usb_ep *ep, struct usb_request *request,
 		goto out;
 	}
 
-	dev_vdbg(dwc->dev, "queueing request %pK to %s length %d, state '%s'\n",
+	dev_vdbg(dwc->dev, "queueing request %p to %s length %d, state '%s'\n",
 			request, dep->name, request->length,
 			dwc3_ep0_state_string(dwc->ep0state));
 
@@ -395,6 +395,7 @@ static int dwc3_ep0_handle_feature(struct dwc3 *dwc,
 	u32			recip;
 	u32			wValue;
 	u32			wIndex;
+	u32			reg;
 	int			ret;
 
 	wValue = le16_to_cpu(ctrl->wValue);
@@ -415,6 +416,13 @@ static int dwc3_ep0_handle_feature(struct dwc3 *dwc,
 				return -EINVAL;
 			if (dwc->speed != DWC3_DSTS_SUPERSPEED)
 				return -EINVAL;
+
+			reg = dwc3_readl(dwc->regs, DWC3_DCTL);
+			if (set)
+				reg |= DWC3_DCTL_INITU1ENA;
+			else
+				reg &= ~DWC3_DCTL_INITU1ENA;
+			dwc3_writel(dwc->regs, DWC3_DCTL, reg);
 			break;
 
 		case USB_DEVICE_U2_ENABLE:
@@ -422,6 +430,13 @@ static int dwc3_ep0_handle_feature(struct dwc3 *dwc,
 				return -EINVAL;
 			if (dwc->speed != DWC3_DSTS_SUPERSPEED)
 				return -EINVAL;
+
+			reg = dwc3_readl(dwc->regs, DWC3_DCTL);
+			if (set)
+				reg |= DWC3_DCTL_INITU2ENA;
+			else
+				reg &= ~DWC3_DCTL_INITU2ENA;
+			dwc3_writel(dwc->regs, DWC3_DCTL, reg);
 			break;
 
 		case USB_DEVICE_LTM_ENABLE:
@@ -526,6 +541,7 @@ static int dwc3_ep0_set_config(struct dwc3 *dwc, struct usb_ctrlrequest *ctrl)
 {
 	u32 cfg;
 	int ret;
+	u32 reg;
 
 	cfg = le16_to_cpu(ctrl->wValue);
 
@@ -539,6 +555,14 @@ static int dwc3_ep0_set_config(struct dwc3 *dwc, struct usb_ctrlrequest *ctrl)
 		/* if the cfg matches and the cfg is non zero */
 		if (cfg && (!ret || (ret == USB_GADGET_DELAYED_STATUS))) {
 			dwc->dev_state = DWC3_CONFIGURED_STATE;
+			/*
+			 * Enable transition to U1/U2 state when
+			 * nothing is pending from application.
+			 */
+			reg = dwc3_readl(dwc->regs, DWC3_DCTL);
+			reg |= (DWC3_DCTL_ACCEPTU1ENA | DWC3_DCTL_ACCEPTU2ENA);
+			dwc3_writel(dwc->regs, DWC3_DCTL, reg);
+
 			dwc->resize_fifos = true;
 			dev_dbg(dwc->dev, "resize fifos flag SET\n");
 		}
@@ -551,28 +575,6 @@ static int dwc3_ep0_set_config(struct dwc3 *dwc, struct usb_ctrlrequest *ctrl)
 		break;
 	default:
 		ret = -EINVAL;
-	}
-	return ret;
-}
-
-static int dwc3_ep0_set_interface(struct dwc3 *dwc, struct usb_ctrlrequest *ctrl)
-{
-	u32 alt_setting;
-	int ret;
-
-	alt_setting = le16_to_cpu(ctrl->wValue);
-        ret = dwc3_ep0_delegate_req(dwc, ctrl);
-
-	switch (dwc->dev_state) {
-        case DWC3_CONFIGURED_STATE:
-                /* if the alt_setting matches and the alt_setting is non zero */
-		if (alt_setting && (!ret || (ret == USB_GADGET_DELAYED_STATUS))) {
-			dwc->resize_fifos = true;
-			dev_dbg(dwc->dev, "resize fifos flag SET\n");
-		}
-		break;
-	default:
-		dev_err(dwc->dev, "default case\n");
 	}
 	return ret;
 }
@@ -711,10 +713,6 @@ static int dwc3_ep0_std_request(struct dwc3 *dwc, struct usb_ctrlrequest *ctrl)
 		dev_vdbg(dwc->dev, "USB_REQ_SET_ISOCH_DELAY\n");
 		ret = dwc3_ep0_set_isoch_delay(dwc, ctrl);
 		break;
-        case USB_REQ_SET_INTERFACE:
-		dev_vdbg(dwc->dev, "USB_REQ_SET_INTERFACE\n");
-                ret = dwc3_ep0_set_interface(dwc, ctrl);
-                break;
 	default:
 		dev_vdbg(dwc->dev, "Forwarding to gadget driver\n");
 		ret = dwc3_ep0_delegate_req(dwc, ctrl);

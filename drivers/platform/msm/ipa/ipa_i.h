@@ -28,11 +28,6 @@
 
 #define DRV_NAME "ipa"
 #define IPA_COOKIE 0xfacefeed
-#define IPA_RT_RULE_COOKIE 0xfacefeef
-#define IPA_RT_TBL_COOKIE 0xfacefef0
-#define IPA_FLT_COOKIE 0xfacefef1
-#define IPA_HDR_COOKIE 0xfacefef2
-#define IPA_PROC_HDR_COOKIE 0xfacefef3
 
 #define IPA_NUM_PIPES 0x14
 #define IPA_SYS_DESC_FIFO_SZ 0x800
@@ -130,7 +125,7 @@
 
 #define IPA_HW_TABLE_ALIGNMENT(start_ofst) \
 	(((start_ofst) + 127) & ~127)
-#define IPA_RT_FLT_HW_RULE_BUF_SIZE	(256)
+#define IPA_RT_FLT_HW_RULE_BUF_SIZE	(128)
 
 /**
  * enum ipa_sys_pipe - 5 A5-IPA pipes
@@ -184,8 +179,8 @@ struct ipa_mem_buffer {
  */
 struct ipa_flt_entry {
 	struct list_head link;
-	u32 cookie;
 	struct ipa_flt_rule rule;
+	u32 cookie;
 	struct ipa_flt_tbl *tbl;
 	struct ipa_rt_tbl *rt_tbl;
 	u32 hw_len;
@@ -208,13 +203,13 @@ struct ipa_flt_entry {
  */
 struct ipa_rt_tbl {
 	struct list_head link;
-	u32 cookie;
 	struct list_head head_rt_rule_list;
 	char name[IPA_RESOURCE_NAME_MAX];
 	u32 idx;
 	u32 rule_cnt;
 	u32 ref_cnt;
 	struct ipa_rt_tbl_set *set;
+	u32 cookie;
 	bool in_sys;
 	u32 sz;
 	struct ipa_mem_buffer curr_mem;
@@ -235,12 +230,12 @@ struct ipa_rt_tbl {
  */
 struct ipa_hdr_entry {
 	struct list_head link;
-	u32 cookie;
 	u8 hdr[IPA_HDR_MAX_SIZE];
 	u32 hdr_len;
 	char name[IPA_RESOURCE_NAME_MAX];
 	u8 is_partial;
 	struct ipa_hdr_offset_entry *offset_entry;
+	u32 cookie;
 	u32 ref_cnt;
 	bool user_deleted;
 };
@@ -303,8 +298,8 @@ struct ipa_flt_tbl {
  */
 struct ipa_rt_entry {
 	struct list_head link;
-	u32 cookie;
 	struct ipa_rt_rule rule;
+	u32 cookie;
 	struct ipa_rt_tbl *tbl;
 	struct ipa_hdr_entry *hdr;
 	u32 hw_len;
@@ -832,7 +827,6 @@ void ipa_enable_clks(void);
 void ipa_disable_clks(void);
 void ipa_inc_client_enable_clks(void);
 void ipa_dec_client_disable_clks(void);
-int ipa_del_hdr_by_user(struct ipa_ioc_del_hdr *hdls, bool by_user);
 int __ipa_del_rt_rule(u32 rule_hdl);
 int __ipa_del_hdr(u32 hdr_hdl, bool by_user);
 int __ipa_release_hdr(u32 hdr_hdl);

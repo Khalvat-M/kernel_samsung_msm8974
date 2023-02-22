@@ -418,7 +418,7 @@ static void tty_set_termios_ldisc(struct tty_struct *tty, int num)
 	mutex_lock(&tty->termios_mutex);
 	tty->termios->c_line = num;
 	mutex_unlock(&tty->termios_mutex);
-	
+
 	tty->disc_data = NULL;
 	tty->receive_room = 0;
 }

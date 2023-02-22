@@ -30,13 +30,13 @@
 #include <linux/mempolicy.h>
 #include <linux/vmalloc.h>
 #include <linux/security.h>
-#include <linux/memcontrol.h>
 #include <linux/backing-dev.h>
+#include <linux/memcontrol.h>
 #include <linux/syscalls.h>
 #include <linux/hugetlb.h>
 #include <linux/gfp.h>
 #include <trace/events/kmem.h>
-#include <linux/ptrace.h>
+
 #include <asm/tlbflush.h>
 
 #include "internal.h"
@@ -296,9 +296,9 @@ static int migrate_page_move_mapping(struct address_space *mapping,
 		struct page *newpage, struct page *page,
 		struct buffer_head *head, enum migrate_mode mode)
 {
-	int expected_count;
 	struct zone *oldzone, *newzone;
 	int dirty;
+	int expected_count;
 	void **pslot;
 
 	if (!mapping) {
@@ -1382,6 +1382,7 @@ SYSCALL_DEFINE6(move_pages, pid_t, pid, unsigned long, nr_pages,
 		const int __user *, nodes,
 		int __user *, status, int, flags)
 {
+	const struct cred *cred = current_cred(), *tcred;
 	struct task_struct *task;
 	struct mm_struct *mm;
 	int err;
@@ -1405,9 +1406,14 @@ SYSCALL_DEFINE6(move_pages, pid_t, pid, unsigned long, nr_pages,
 
 	/*
 	 * Check if this process has the right to modify the specified
-	 * process. Use the regular "ptrace_may_access()" checks.
+	 * process. The right exists if the process has administrative
+	 * capabilities, superuser privileges or the same
+	 * userid as the target process.
 	 */
-	if (!ptrace_may_access(task, PTRACE_MODE_READ_REALCREDS)) {
+	tcred = __task_cred(task);
+	if (cred->euid != tcred->suid && cred->euid != tcred->uid &&
+	    cred->uid  != tcred->suid && cred->uid  != tcred->uid &&
+	    !capable(CAP_SYS_NICE)) {
 		rcu_read_unlock();
 		err = -EPERM;
 		goto out;

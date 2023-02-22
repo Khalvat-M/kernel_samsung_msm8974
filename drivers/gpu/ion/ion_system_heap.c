@@ -455,10 +455,8 @@ static void ion_system_heap_destroy_pools(struct ion_page_pool **pools)
 {
 	int i;
 	for (i = 0; i < num_orders; i++)
-		if (pools[i]) {
+		if (pools[i])
 			ion_page_pool_destroy(pools[i]);
-			pools[i] = NULL;
-		}
 }
 
 /**
@@ -475,7 +473,7 @@ static int ion_system_heap_create_pools(struct ion_page_pool **pools)
 		struct ion_page_pool *pool;
 		gfp_t gfp_flags = low_order_gfp_flags;
 
-		if (orders[i] > 0)
+		if (orders[i])
 			gfp_flags = high_order_gfp_flags;
 		pool = ion_page_pool_create(gfp_flags, orders[i]);
 		if (!pool)

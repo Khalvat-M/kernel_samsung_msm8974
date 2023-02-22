@@ -1780,10 +1780,10 @@ void snd_pcm_period_elapsed(struct snd_pcm_substream *substream)
 	if (substream->timer_running)
 		snd_timer_interrupt(substream->timer, 1);
  _end:
-	kill_fasync(&runtime->fasync, SIGIO, POLL_IN);
-	snd_pcm_stream_unlock_irqrestore(substream, flags);
 	if (runtime->transfer_ack_end)
 		runtime->transfer_ack_end(substream);
+	kill_fasync(&runtime->fasync, SIGIO, POLL_IN);
+	snd_pcm_stream_unlock_irqrestore(substream, flags);
 }
 
 EXPORT_SYMBOL(snd_pcm_period_elapsed);
@@ -1811,11 +1811,7 @@ static int wait_for_avail(struct snd_pcm_substream *substream,
 	if (runtime->no_period_wakeup)
 		wait_time = MAX_SCHEDULE_TIMEOUT;
 	else {
-                if (substream->pcm->card->number != 0)
-			wait_time = 1;
-		else
-			wait_time = 10;
-
+		wait_time = 10;
 		if (runtime->rate) {
 			long t = runtime->period_size * 2 / runtime->rate;
 			wait_time = max(t, wait_time);

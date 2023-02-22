@@ -95,8 +95,19 @@ extern int printk_needs_cpu(int cpu);
 extern void printk_tick(void);
 
 #ifdef CONFIG_PRINTK
+asmlinkage __printf(5, 0)
+int vprintk_emit(int facility, int level,
+		const char *dict, size_t dictlen,
+		const char *fmt, va_list args);
+
 asmlinkage __printf(1, 0)
 int vprintk(const char *fmt, va_list args);
+
+asmlinkage __printf(5, 6) __cold
+asmlinkage int printk_emit(int facility, int level,
+				const char *dict, size_t dictlen,
+				const char *fmt, ...);
+
 asmlinkage __printf(1, 2) __cold
 int printk(const char *fmt, ...);
 
@@ -188,6 +199,8 @@ extern void dump_stack(void) __cold;
 #define pr_devel(fmt, ...) \
 	no_printk(KERN_DEBUG pr_fmt(fmt), ##__VA_ARGS__)
 #endif
+
+extern const struct file_operations kmsg_fops;
 
 /* If you are writing a driver, please use dev_dbg instead */
 #if defined(CONFIG_DYNAMIC_DEBUG)
@@ -314,9 +327,6 @@ static inline void print_hex_dump_bytes(const char *prefix_str, int prefix_type,
 {
 }
 
-#if defined(CONFIG_GSM_MODEM_SPRD6500)
-extern int get_console_suspended(void);
-#endif
 #endif
 
 #endif

@@ -9,7 +9,6 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
-#define SEC_FEATURE_USE_RT_MUTEX
 
 #define pr_fmt(fmt) "%s: " fmt, __func__
 
@@ -29,9 +28,7 @@
 #include <mach/rpm-smd.h>
 #include <mach/rpm-regulator-smd.h>
 #include <mach/socinfo.h>
-#ifdef SEC_FEATURE_USE_RT_MUTEX
-#include <linux/rtmutex.h>
-#endif
+
 /* Debug Definitions */
 
 enum {
@@ -163,11 +160,7 @@ struct rpm_vreg {
 	int			hpm_min_load;
 	int			enable_time;
 	struct spinlock		slock;
-#ifdef SEC_FEATURE_USE_RT_MUTEX
-	struct rt_mutex		mlock;
-#else
 	struct mutex		mlock;
-#endif
 	unsigned long		flags;
 	bool			sleep_request_sent;
 	bool			apps_only;
@@ -228,11 +221,7 @@ static inline void rpm_vreg_lock(struct rpm_vreg *rpm_vreg)
 	if (rpm_vreg->allow_atomic)
 		spin_lock_irqsave(&rpm_vreg->slock, rpm_vreg->flags);
 	else
-#ifdef SEC_FEATURE_USE_RT_MUTEX
-		rt_mutex_lock(&rpm_vreg->mlock);
-#else
 		mutex_lock(&rpm_vreg->mlock);
-#endif
 }
 
 static inline void rpm_vreg_unlock(struct rpm_vreg *rpm_vreg)
@@ -240,11 +229,7 @@ static inline void rpm_vreg_unlock(struct rpm_vreg *rpm_vreg)
 	if (rpm_vreg->allow_atomic)
 		spin_unlock_irqrestore(&rpm_vreg->slock, rpm_vreg->flags);
 	else
-#ifdef SEC_FEATURE_USE_RT_MUTEX
-		rt_mutex_unlock(&rpm_vreg->mlock);
-#else
 		mutex_unlock(&rpm_vreg->mlock);
-#endif
 }
 
 static inline bool rpm_vreg_active_or_sleep_enabled(struct rpm_vreg *rpm_vreg)
@@ -1635,11 +1620,7 @@ static int __devinit rpm_vreg_resource_probe(struct platform_device *pdev)
 	if (rpm_vreg->allow_atomic)
 		spin_lock_init(&rpm_vreg->slock);
 	else
-#ifdef SEC_FEATURE_USE_RT_MUTEX
-		rt_mutex_init(&rpm_vreg->mlock);
-#else
 		mutex_init(&rpm_vreg->mlock);
-#endif
 
 	platform_set_drvdata(pdev, rpm_vreg);
 

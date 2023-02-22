@@ -44,7 +44,6 @@ void kmap_atomic_flush_unused(void);
 #else
 static inline void kmap_atomic_flush_unused(void) { }
 #endif
-
 struct page *kmap_to_page(void *addr);
 
 #else /* CONFIG_HIGHMEM */

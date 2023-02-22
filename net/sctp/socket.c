@@ -4232,10 +4232,6 @@ int sctp_do_peeloff(struct sock *sk, sctp_assoc_t id, struct socket **sockp)
 	struct sctp_af *af;
 	int err = 0;
 
-	/* Do not peel off from one netns to another one. */
-	if (!net_eq(current->nsproxy->net_ns, sock_net(sk)))
-		return -EINVAL;
-
 	if (!asoc)
 		return -EINVAL;
 
@@ -4250,6 +4246,12 @@ int sctp_do_peeloff(struct sock *sk, sctp_assoc_t id, struct socket **sockp)
 	 */
 	if (!sctp_style(sk, UDP))
 		return -EINVAL;
+
+	/* If there is a thread waiting on more sndbuf space for
+	 * sending on this asoc, it cannot be peeled.
+	 */
+	if (waitqueue_active(&asoc->wait))
+		return -EBUSY;
 
 	/* Create a new socket.  */
 	err = sock_create(sk->sk_family, SOCK_SEQPACKET, IPPROTO_SCTP, &sock);

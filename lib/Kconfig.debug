@@ -3,12 +3,16 @@ config PRINTK_TIME
 	bool "Show timing information on printks"
 	depends on PRINTK
 	help
-	  Selecting this option causes timing information to be
-	  included in printk output.  This allows you to measure
-	  the interval between kernel operations, including bootup
-	  operations.  This is useful for identifying long delays
-	  in kernel startup.  Or add printk.time=1 at boot-time.
-	  See Documentation/kernel-parameters.txt
+	  Selecting this option causes time stamps of the printk()
+	  messages to be added to the output of the syslog() system
+	  call and at the console.
+
+	  The timestamp is always recorded internally, and exported
+	  to /dev/kmsg. This flag just specifies if the timestamp should
+	  be included, not that the timestamp is recorded.
+
+	  The behavior is also controlled by the kernel command line
+	  parameter printk.time=1. See Documentation/kernel-parameters.txt
 
 config DEFAULT_MESSAGE_LOGLEVEL
 	int "Default message log level (1-7)"
@@ -178,23 +182,13 @@ config LOCKUP_DETECTOR
 	  The overhead should be minimal.  A periodic hrtimer runs to
 	  generate interrupts and kick the watchdog task every 4 seconds.
 	  An NMI is generated every 10 seconds or so to check for hardlockups.
-	  If NMIs are not available on the platform, every 12 seconds the
-	  hrtimer interrupt on one cpu will be used to check for hardlockups
-	  on the next cpu.
 
 	  The frequency of hrtimer and NMI events and the soft and hard lockup
 	  thresholds can be controlled through the sysctl watchdog_thresh.
 
-config HARDLOCKUP_DETECTOR_NMI
+config HARDLOCKUP_DETECTOR
 	def_bool LOCKUP_DETECTOR && PERF_EVENTS && HAVE_PERF_EVENTS_NMI && \
 		 !HAVE_NMI_WATCHDOG
-
-config HARDLOCKUP_DETECTOR_OTHER_CPU
-	def_bool LOCKUP_DETECTOR && SMP && !HARDLOCKUP_DETECTOR_NMI && \
-		 !HAVE_NMI_WATCHDOG
-
-config HARDLOCKUP_DETECTOR
-	def_bool HARDLOCKUP_DETECTOR_NMI || HARDLOCKUP_DETECTOR_OTHER_CPU
 
 config BOOTPARAM_HARDLOCKUP_PANIC
 	bool "Panic (Reboot) On Hard Lockups"
@@ -450,7 +444,7 @@ config DEBUG_KMEMLEAK_EARLY_LOG_SIZE
 	int "Maximum kmemleak early log entries"
 	depends on DEBUG_KMEMLEAK
 	range 200 40000
-	default 800
+	default 400
 	help
 	  Kmemleak must track all the memory allocations to avoid
 	  reporting false positives. Since memory may be allocated or

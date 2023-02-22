@@ -323,7 +323,6 @@ ipt_do_table(struct sk_buff *skb,
 
 	IP_NF_ASSERT(table->valid_hooks & (1 << hook));
 	local_bh_disable();
-	get_reader(&(table->private_lock));
 	addend = xt_write_recseq_begin();
 	private = table->private;
 	cpu        = smp_processor_id();
@@ -428,7 +427,6 @@ ipt_do_table(struct sk_buff *skb,
 		 __func__, *stackptr, origptr);
 	*stackptr = origptr;
  	xt_write_recseq_end(addend);
-	put_reader(&(table->private_lock));
  	local_bh_enable();
 
 #ifdef DEBUG_ALLOW_ALL
@@ -517,8 +515,6 @@ mark_source_chains(const struct xt_table_info *newinfo,
 				size = e->next_offset;
 				e = (struct ipt_entry *)
 					(entry0 + pos + size);
-				if (pos + size >= newinfo->size)
-					return 0;
 				e->counters.pcnt = pos;
 				pos += size;
 			} else {
@@ -540,8 +536,6 @@ mark_source_chains(const struct xt_table_info *newinfo,
 				} else {
 					/* ... this is a fallthru */
 					newpos = pos + e->next_offset;
-					if (newpos >= newinfo->size)
-						return 0;
 				}
 				e = (struct ipt_entry *)
 					(entry0 + newpos);

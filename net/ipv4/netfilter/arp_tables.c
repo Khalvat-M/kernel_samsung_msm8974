@@ -269,7 +269,6 @@ unsigned int arpt_do_table(struct sk_buff *skb,
 	outdev = out ? out->name : nulldevname;
 
 	local_bh_disable();
-	get_reader(&(table->private_lock));
 	addend = xt_write_recseq_begin();
 	private = table->private;
 	/*
@@ -347,7 +346,6 @@ unsigned int arpt_do_table(struct sk_buff *skb,
 			break;
 	} while (!acpar.hotdrop);
 	xt_write_recseq_end(addend);
-	put_reader(&(table->private_lock));
 	local_bh_enable();
 
 	if (acpar.hotdrop)
@@ -437,8 +435,6 @@ static int mark_source_chains(const struct xt_table_info *newinfo,
 				size = e->next_offset;
 				e = (struct arpt_entry *)
 					(entry0 + pos + size);
-				if (pos + size >= newinfo->size)
-					return 0;
 				e->counters.pcnt = pos;
 				pos += size;
 			} else {
@@ -461,8 +457,6 @@ static int mark_source_chains(const struct xt_table_info *newinfo,
 				} else {
 					/* ... this is a fallthru */
 					newpos = pos + e->next_offset;
-					if (newpos >= newinfo->size)
-						return 0;
 				}
 				e = (struct arpt_entry *)
 					(entry0 + newpos);
@@ -686,8 +680,10 @@ static int translate_table(struct xt_table_info *newinfo, void *entry0,
 		}
 	}
 
-	if (!mark_source_chains(newinfo, repl->valid_hooks, entry0))
+	if (!mark_source_chains(newinfo, repl->valid_hooks, entry0)) {
+		duprintf("Looping hook\n");
 		return -ELOOP;
+	}
 
 	/* Finally, each sanity check must pass */
 	i = 0;

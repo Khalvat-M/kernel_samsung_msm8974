@@ -412,7 +412,7 @@ nfqnl_enqueue_packet(struct nf_queue_entry *entry, unsigned int queuenum)
 	__be32 *packet_id_ptr;
 	int failopen = 0;
 
- 	/* rcu_read_lock()ed by nf_hook_slow() */
+	/* rcu_read_lock()ed by nf_hook_slow() */
 	queue = instance_lookup(queuenum);
 	if (!queue) {
 		err = -ESRCH;

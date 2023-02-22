@@ -1356,7 +1356,7 @@ struct vfsmount *collect_mounts(struct path *path)
 		tree = ERR_PTR(-EINVAL);
 	else
 		tree = copy_tree(real_mount(path->mnt), path->dentry,
-				CL_COPY_ALL | CL_PRIVATE);
+				 CL_COPY_ALL | CL_PRIVATE);
 	up_write(&namespace_sem);
 	if (IS_ERR(tree))
 		return NULL;
@@ -1713,6 +1713,7 @@ static int do_remount(struct path *path, int flags, int mnt_flags,
 	int err;
 	struct super_block *sb = path->mnt->mnt_sb;
 	struct mount *mnt = real_mount(path->mnt);
+	LIST_HEAD(umounts);
 
 	if (!capable(CAP_SYS_ADMIN))
 		return -EPERM;
@@ -1732,9 +1733,12 @@ static int do_remount(struct path *path, int flags, int mnt_flags,
 		err = change_mount_flags(path->mnt, flags);
 	else {
 		err = do_remount_sb2(path->mnt, sb, flags, data, 0);
+		down_write(&namespace_sem);
 		br_write_lock(&vfsmount_lock);
 		propagate_remount(mnt);
 		br_write_unlock(&vfsmount_lock);
+		up_write(&namespace_sem);
+		release_mounts(&umounts);
 	}
 	if (!err) {
 		br_write_lock(&vfsmount_lock);
@@ -2332,10 +2336,10 @@ static struct mnt_namespace *dup_mnt_ns(struct mnt_namespace *mnt_ns,
 	copy_flags = CL_COPY_ALL | CL_EXPIRE;
 	if (user_ns != mnt_ns->user_ns)
 		copy_flags |= CL_SHARED_TO_SLAVE;
-	new = copy_tree(old, old->mnt.mnt_root, copy_flags);
+	new = copy_tree(old, old->mnt.mnt_root, CL_COPY_ALL | CL_EXPIRE);
 	if (IS_ERR(new)) {
 		up_write(&namespace_sem);
-		free_mnt_ns(new_ns);
+		kfree(new_ns);
 		return ERR_CAST(new);
 	}
 	new_ns->root = new;
@@ -2445,7 +2449,7 @@ SYSCALL_DEFINE5(mount, char __user *, dev_name, char __user *, dir_name,
 {
 	int ret;
 	char *kernel_type;
-	char *kernel_dir;
+	struct filename *kernel_dir;
 	char *kernel_dev;
 	unsigned long data_page;
 
@@ -2467,7 +2471,7 @@ SYSCALL_DEFINE5(mount, char __user *, dev_name, char __user *, dir_name,
 	if (ret < 0)
 		goto out_data;
 
-	ret = do_mount(kernel_dev, kernel_dir, kernel_type, flags,
+	ret = do_mount(kernel_dev, kernel_dir->name, kernel_type, flags,
 		(void *) data_page);
 
 	free_page(data_page);

@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2007-2014,2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2002,2007-2014,2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -617,7 +617,8 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 			size_t size)
 {
 	int pcount = 0, ret = 0;
-	int j, len, page_size, sglen_alloc, sglen = 0;
+	int j, page_size, sglen_alloc, sglen = 0;
+	size_t len;
 	struct page **pages = NULL;
 	pgprot_t page_prot = pgprot_writecombine(PAGE_KERNEL);
 	void *ptr;
@@ -734,9 +735,6 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 
 	memdesc->sglen = sglen;
 	memdesc->size = size;
-
-	if (sglen > 0)
-		sg_mark_end(&memdesc->sg[sglen - 1]);
 
 	/*
 	 * All memory that goes to the user has to be zeroed out before it gets

@@ -140,7 +140,7 @@ fail_alloc_mem:
 static int __ipa_add_hdr(struct ipa_hdr_add *hdr)
 {
 	struct ipa_hdr_entry *entry;
-	struct ipa_hdr_offset_entry *offset = NULL;
+	struct ipa_hdr_offset_entry *offset;
 	struct ipa_tree_node *node;
 	u32 bin;
 	struct ipa_hdr_tbl *htbl = &ipa_ctx->hdr_tbl;
@@ -168,7 +168,7 @@ static int __ipa_add_hdr(struct ipa_hdr_add *hdr)
 	entry->hdr_len = hdr->hdr_len;
 	strlcpy(entry->name, hdr->name, IPA_RESOURCE_NAME_MAX);
 	entry->is_partial = hdr->is_partial;
-	entry->cookie = IPA_HDR_COOKIE;
+	entry->cookie = IPA_COOKIE;
 
 	if (hdr->hdr_len <= ipa_hdr_bin_sz[IPA_HDR_BIN0])
 		bin = IPA_HDR_BIN0;
@@ -219,7 +219,6 @@ static int __ipa_add_hdr(struct ipa_hdr_add *hdr)
 	if (ipa_insert(&ipa_ctx->hdr_hdl_tree, node)) {
 		IPAERR("failed to add to tree\n");
 		WARN_ON(1);
-		 goto ipa_insert_failed;
 	}
 
 	entry->ref_cnt++;
@@ -228,14 +227,6 @@ static int __ipa_add_hdr(struct ipa_hdr_add *hdr)
 
 ofst_alloc_fail:
 	kmem_cache_free(ipa_ctx->hdr_offset_cache, offset);
-ipa_insert_failed:
-	if (offset)
-		list_move(&offset->link,
-			  &htbl->head_free_offset_list[offset->bin]);
-	entry->offset_entry = NULL;
-
-	htbl->hdr_cnt--;
-	list_del(&entry->link);
 bad_hdr_len:
 	entry->cookie = 0;
 	kmem_cache_free(ipa_ctx->hdr_cache, entry);
@@ -257,7 +248,7 @@ int __ipa_del_hdr(u32 hdr_hdl, bool by_user)
 		return -EINVAL;
 	}
 
-	if (!entry || (entry->cookie != IPA_HDR_COOKIE)) {
+	if (!entry || (entry->cookie != IPA_COOKIE)) {
 		IPAERR("bad parm\n");
 		return -EINVAL;
 	}
@@ -270,17 +261,8 @@ int __ipa_del_hdr(u32 hdr_hdl, bool by_user)
 		return -EINVAL;
 	}
 
-	if (by_user) {
-		if (!strcmp(entry->name, IPA_LAN_RX_HDR_NAME)) {
-			IPADBG("Trying to delete hdr %s offset=%u\n",
-				entry->name, entry->offset_entry->offset);
-			if (!entry->offset_entry->offset) {
-				IPAERR("User cannot delete default header\n");
-				return -EPERM;
-			}
-		}
+	if (by_user)
 		entry->user_deleted = true;
-	}
 
 	if (--entry->ref_cnt) {
 		IPADBG("hdr_hdl %x ref_cnt %d\n", hdr_hdl, entry->ref_cnt);
@@ -487,19 +469,8 @@ int ipa_reset_hdr(void)
 
 		/* do not remove the default exception header */
 		if (!strncmp(entry->name, IPA_DFLT_HDR_NAME,
-					IPA_RESOURCE_NAME_MAX)) {
-			IPADBG("Trying to remove hdr %s offset=%u\n",
-				entry->name, entry->offset_entry->offset);
-			if (!entry->offset_entry->offset) {
-				if (entry->is_hdr_proc_ctx) {
-					mutex_unlock(&ipa_ctx->lock);
-					WARN_ON(1);
-					return -EFAULT;
-				}
-				IPADBG("skip default header\n");
-				continue;
-			}
-		}
+					IPA_RESOURCE_NAME_MAX))
+			continue;
 
 		node = ipa_search(&ipa_ctx->hdr_hdl_tree, (u32) entry);
 		if (node == NULL) {
@@ -642,7 +613,7 @@ int ipa_put_hdr(u32 hdr_hdl)
 		goto bail;
 	}
 
-	if (entry == NULL || entry->cookie != IPA_HDR_COOKIE) {
+	if (entry == NULL || entry->cookie != IPA_COOKIE) {
 		IPAERR("bad params\n");
 		result = -EINVAL;
 		goto bail;

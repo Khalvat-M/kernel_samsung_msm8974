@@ -1,6 +1,6 @@
 /* Qualcomm Crypto driver
  *
- * Copyright (c) 2010-2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2010-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1639,7 +1639,7 @@ static int _qcrypto_process_ahash(struct crypto_engine *pengine,
 static int _qcrypto_process_aead(struct  crypto_engine *pengine,
 				struct crypto_async_request *async_req)
 {
-	struct qce_req qreq = {0};
+	struct qce_req qreq;
 	int ret = 0;
 	struct qcrypto_cipher_req_ctx *rctx;
 	struct qcrypto_cipher_ctx *cipher_ctx;

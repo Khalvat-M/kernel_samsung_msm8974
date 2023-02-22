@@ -861,7 +861,7 @@ struct thermal_hwmon_device {
 
 struct thermal_hwmon_attr {
 	struct device_attribute attr;
-	char name[THERMAL_NAME_LENGTH];
+	char name[16];
 };
 
 /* one temperature input for each thermal zone */
